@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MedSecure — Drug–Drug Interaction Analysis</title>
+<meta name="description" content="MedSecure screens a medication list for drug-drug interactions using a curated knowledge base, a pharmacological rule engine and machine learning. Educational prototype — not a medical device.">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="MedSecure — Drug–Drug Interaction Analysis">
+<meta property="og:description" content="Curated evidence, pharmacological rules and machine learning — every interaction explained. Educational prototype, not for clinical use.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0091ff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230091ff'/%3E%3Cpath d='M16 5l9 3.6v6.1c0 5.6-3.8 10.3-9 11.6-5.2-1.3-9-6-9-11.6V8.6z' fill='none' stroke='%23fff' stroke-width='2.1' stroke-linejoin='round'/%3E%3Cpath d='M16 11.4v8.4M11.8 15.6h8.4' stroke='%23fff' stroke-width='2.3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f6fd;
+  --glass:rgba(255,255,255,.78);--glass2:rgba(255,255,255,.92);
+  --line:rgba(76,110,180,.16);--line2:rgba(76,110,180,.34);
+  --ink:#0d1b36;--muted:#5a6d8f;--dim:#8396b4;
+  --cy:#0091ff;--vi:#7c3aed;--mg:#ec4899;--lm:#00b885;--am:#f59e0b;
+  --pri:var(--cy);--priSoft:rgba(0,145,255,.08);
+  --s4:#e11d48;--s4b:rgba(225,29,72,.09);
+  --s3:#ea580c;--s3b:rgba(234,88,12,.10);
+  --s2:#d97706;--s2b:rgba(217,119,6,.11);
+  --s1:#0284c7;--s1b:rgba(2,132,199,.10);
+  --s0:#059669;--s0b:rgba(5,150,105,.10);
+  --ml:#7c3aed;--mlb:rgba(124,58,237,.10);
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:'Space Grotesk',system-ui,sans-serif;color:var(--ink);font-size:14.5px;line-height:1.55;
+  background:var(--bg);min-height:100vh;position:relative;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+   radial-gradient(900px 620px at 10% -8%,rgba(0,145,255,.22),transparent 62%),
+   radial-gradient(820px 540px at 90% -2%,rgba(124,58,237,.20),transparent 62%),
+   radial-gradient(780px 640px at 55% 112%,rgba(236,72,153,.14),transparent 60%),
+   linear-gradient(180deg,#eaf1ff,#f3f6fd 55%,#f7f9ff);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.55;
+  background-image:linear-gradient(rgba(76,110,180,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(76,110,180,.10) 1px,transparent 1px);
+  background-size:46px 46px;
+  mask-image:radial-gradient(ellipse 120% 80% at 50% 0%,#000 20%,transparent 75%);
+  -webkit-mask-image:radial-gradient(ellipse 120% 80% at 50% 0%,#000 20%,transparent 75%);
+}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.9em}
+::selection{background:rgba(0,145,255,.22)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:rgba(76,110,180,.05)}
+::-webkit-scrollbar-thumb{background:rgba(76,110,180,.26);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:rgba(76,110,180,.44)}
+
+/* ── HEADER ─────────────────────────────── */
+header{
+  padding:20px 28px 0;position:relative;
+  background:linear-gradient(180deg,rgba(255,255,255,.88),rgba(255,255,255,.55));
+  border-bottom:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+}
+header::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--cy),var(--vi),var(--mg),transparent);opacity:.85}
+.brand{display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.logo{
+  width:46px;height:46px;border-radius:13px;display:grid;place-items:center;position:relative;
+  background:linear-gradient(145deg,var(--cy),var(--vi));
+  box-shadow:0 8px 22px rgba(0,145,255,.34),0 2px 6px rgba(124,58,237,.3);
+}
+.logo::after{content:"";position:absolute;inset:-4px;border-radius:17px;border:1.5px solid rgba(0,145,255,.35);animation:halo 3.2s ease-in-out infinite}
+@keyframes halo{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:.75;transform:scale(1.07)}}
+h1{
+  font-family:'Chakra Petch',sans-serif;font-size:25px;margin:0;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  background:linear-gradient(95deg,#0d1b36 5%,var(--cy) 45%,var(--vi) 82%);-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.sub{color:var(--muted);font-size:12.5px;margin-top:1px;letter-spacing:.03em;font-family:'JetBrains Mono',monospace}
+.pillrow{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.hpill{
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.03em;padding:5px 12px;border-radius:99px;
+  background:#fff;border:1px solid var(--line);color:#2d4a7a;box-shadow:0 2px 8px rgba(76,110,180,.1);
+}
+.hpill::before{content:"● ";color:var(--lm);font-size:9px;vertical-align:middle}
+nav{display:flex;gap:3px;margin-top:18px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{
+  color:var(--muted);text-decoration:none;padding:11px 18px;border-radius:11px 11px 0 0;font-size:13px;white-space:nowrap;
+  font-family:'Chakra Petch',sans-serif;font-weight:600;letter-spacing:.07em;text-transform:uppercase;position:relative;transition:.2s;
+}
+nav a:hover{color:var(--ink);background:rgba(0,145,255,.06)}
+nav a.on{color:#07306b;background:linear-gradient(180deg,rgba(0,145,255,.14),rgba(255,255,255,.4))}
+nav a.on::after{content:"";position:absolute;left:14px;right:14px;bottom:0;height:3px;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 2px 10px rgba(0,145,255,.5);border-radius:3px}
+
+main{max-width:1320px;margin:0 auto;padding:24px 22px 70px}
+.view{display:none;animation:fade .35s ease}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.grid{display:grid;grid-template-columns:370px 1fr;gap:20px;align-items:start}
+@media(max-width:920px){.grid{grid-template-columns:1fr}}
+
+/* ── CARDS ──────────────────────────────── */
+.card{
+  background:var(--glass2);border:1px solid var(--line);border-radius:var(--r);padding:19px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);position:relative;overflow:hidden;
+  box-shadow:0 8px 28px rgba(28,55,110,.08),0 1px 3px rgba(28,55,110,.05);
+}
+.card::before{content:"";position:absolute;top:0;left:10%;right:10%;height:2px;background:linear-gradient(90deg,transparent,rgba(0,145,255,.55),rgba(124,58,237,.45),transparent)}
+.card h2{
+  font-family:'Chakra Petch',sans-serif;font-size:13px;margin:0 0 14px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#17407e;
+  display:flex;align-items:center;gap:9px;
+}
+.card h2::before{content:"";width:5px;height:14px;border-radius:2px;background:linear-gradient(180deg,var(--cy),var(--vi));box-shadow:0 2px 8px rgba(0,145,255,.45);flex:none}
+.card h3{font-size:13px;margin:17px 0 8px;font-weight:600;color:#25406d;letter-spacing:.02em}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+
+/* ── SEARCH ─────────────────────────────── */
+.search{position:relative}
+.search input{
+  width:100%;padding:12px 12px 12px 38px;border:1px solid var(--line);border-radius:10px;font:inherit;
+  background:#fff;color:var(--ink);transition:.2s;
+}
+.search input::placeholder{color:var(--dim)}
+.search input:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(0,145,255,.14)}
+.search svg{position:absolute;left:13px;top:13px;color:var(--dim)}
+.dd{
+  position:absolute;z-index:30;left:0;right:0;top:48px;border-radius:11px;max-height:320px;overflow:auto;display:none;
+  background:#fff;border:1px solid var(--line2);box-shadow:0 18px 44px rgba(28,55,110,.18);
+}
+.dd div{padding:9px 13px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;border-left:3px solid transparent}
+.dd div:hover,.dd div.act{background:rgba(0,145,255,.09);border-left-color:var(--cy)}
+.dd .cls{color:var(--dim);font-size:11.5px;text-align:right;font-family:'JetBrains Mono',monospace}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 4px;min-height:36px}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;padding:6px 7px 6px 13px;border-radius:99px;font-weight:600;font-size:13px;
+  background:linear-gradient(135deg,rgba(0,145,255,.13),rgba(124,58,237,.13));color:#17407e;border:1px solid rgba(0,145,255,.28);
+  box-shadow:0 2px 8px rgba(0,145,255,.12);animation:pop .22s ease;
+}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.chip button{border:0;background:rgba(13,27,54,.08);color:#17407e;width:20px;height:20px;border-radius:50%;cursor:pointer;line-height:1;font-size:13px;transition:.15s}
+.chip button:hover{background:var(--mg);color:#fff;box-shadow:0 2px 10px rgba(236,72,153,.5)}
+.chip.imp{background:rgba(13,27,54,.05);color:#4a5e80;border-color:rgba(13,27,54,.12);box-shadow:none}
+
+/* ── BUTTONS ────────────────────────────── */
+.btn{
+  border:1px solid var(--line);background:#fff;padding:9px 15px;border-radius:9px;cursor:pointer;
+  font-family:'Chakra Petch',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#2d4a7a;transition:.18s;
+  box-shadow:0 1px 3px rgba(28,55,110,.07);
+}
+.btn:hover{border-color:var(--cy);color:#0062b3;background:rgba(0,145,255,.07);box-shadow:0 4px 14px rgba(0,145,255,.18)}
+.btn.pri{background:linear-gradient(120deg,var(--cy),var(--vi));color:#fff;border-color:transparent;box-shadow:0 6px 18px rgba(0,145,255,.3)}
+.btn.pri:hover{color:#fff;filter:brightness(1.08);box-shadow:0 8px 24px rgba(0,145,255,.42)}
+.btn.sm{padding:6px 11px;font-size:11.5px}
+.presets{display:flex;flex-wrap:wrap;gap:7px}
+
+/* ── STATS ──────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:17px}
+@media(max-width:760px){.stats{grid-template-columns:repeat(3,1fr)}}
+.stat{
+  background:var(--glass2);border:1px solid var(--line);border-radius:12px;padding:13px 15px;
+  backdrop-filter:blur(14px);position:relative;overflow:hidden;box-shadow:0 4px 16px rgba(28,55,110,.07);
+}
+.stat b{display:block;font-family:'Chakra Petch',sans-serif;font-size:27px;font-weight:700;line-height:1.05;letter-spacing:.01em}
+.stat span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:600}
+.stat.c4 b{color:var(--s4)}
+.stat.c3 b{color:var(--s3)}
+.stat.c2 b{color:var(--s2)}
+.stat.c1 b{color:var(--s1)}
+
+/* ── BANNER ─────────────────────────────── */
+.banner{
+  border-radius:12px;padding:15px 18px;margin-bottom:17px;display:flex;gap:12px;align-items:center;font-weight:600;
+  font-family:'Chakra Petch',sans-serif;letter-spacing:.03em;position:relative;overflow:hidden;
+}
+.banner::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);transform:translateX(-100%);animation:sweep 3.8s ease-in-out infinite}
+@keyframes sweep{0%{transform:translateX(-100%)}55%,100%{transform:translateX(100%)}}
+.banner.b4{background:var(--s4b);color:#9f1239;border:1px solid rgba(225,29,72,.3);box-shadow:0 6px 20px rgba(225,29,72,.14)}
+.banner.b3{background:var(--s3b);color:#9a3412;border:1px solid rgba(234,88,12,.3);box-shadow:0 6px 20px rgba(234,88,12,.12)}
+.banner.b2{background:var(--s2b);color:#92400e;border:1px solid rgba(217,119,6,.3)}
+.banner.b1,.banner.b0{background:var(--s0b);color:#065f46;border:1px solid rgba(5,150,105,.3)}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty svg{opacity:.4;margin-bottom:10px;color:var(--cy)}
+
+/* ── RESULT CARDS ───────────────────────── */
+.res{
+  border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;position:relative;
+  background:var(--glass2);backdrop-filter:blur(14px);transition:.2s;box-shadow:0 4px 16px rgba(28,55,110,.07);
+}
+.res:hover{border-color:var(--line2);box-shadow:0 8px 24px rgba(28,55,110,.11)}
+.res-h{display:flex;align-items:center;gap:11px;padding:13px 17px;cursor:pointer;flex-wrap:wrap}
+.res-h .pair{font-weight:600;font-size:15px;letter-spacing:.01em}
+.res-h .arrow{color:var(--cy);margin:0 3px}
+.res-h .srcs{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
+.res-b{padding:0 17px 15px;border-top:1px solid var(--line);display:none}
+.res.open .res-b{display:block;animation:fade .25s ease}
+.res::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.res.sv4::before{background:var(--s4)}
+.res.sv3::before{background:var(--s3)}
+.res.sv2::before{background:var(--s2)}
+.res.sv1::before{background:var(--s1)}
+.res.sv0::before{background:rgba(5,150,105,.45)}
+.res.svml::before{background:var(--ml)}
+.res.sv4{box-shadow:0 0 0 1px rgba(225,29,72,.18),0 8px 24px rgba(225,29,72,.1)}
+
+.sev{
+  display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;
+  text-transform:uppercase;letter-spacing:.1em;border:1px solid transparent;
+}
+.sev.s4{background:var(--s4);color:#fff;box-shadow:0 2px 10px rgba(225,29,72,.4);animation:thr 2s ease-in-out infinite}
+@keyframes thr{0%,100%{box-shadow:0 2px 10px rgba(225,29,72,.35)}50%{box-shadow:0 2px 18px rgba(225,29,72,.75)}}
+.sev.s3{background:var(--s3b);color:var(--s3);border-color:rgba(234,88,12,.35)}
+.sev.s2{background:var(--s2b);color:var(--s2);border-color:rgba(217,119,6,.32)}
+.sev.s1{background:var(--s1b);color:var(--s1);border-color:rgba(2,132,199,.32)}
+.sev.s0{background:var(--s0b);color:var(--s0);border-color:rgba(5,150,105,.3)}
+.sev.sml{background:var(--mlb);color:var(--ml);border-color:rgba(124,58,237,.34)}
+.src{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 9px;border-radius:5px;background:rgba(13,27,54,.045);color:var(--muted);letter-spacing:.03em;border:1px solid rgba(13,27,54,.07)}
+.src.kb{background:rgba(2,132,199,.09);color:#0369a1;border-color:rgba(2,132,199,.22)}
+.src.rule{background:rgba(217,119,6,.1);color:#b45309;border-color:rgba(217,119,6,.24)}
+.src.ml{background:var(--mlb);color:var(--ml);border-color:rgba(124,58,237,.26)}
+.src.imp{background:rgba(13,27,54,.05);color:#4a5e80}
+.sec{margin-top:14px}
+.sec-t{font-family:'Chakra Petch',sans-serif;font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);font-weight:700;margin-bottom:7px}
+.finding{background:rgba(76,110,180,.045);border:1px solid var(--line);border-radius:9px;padding:10px 13px;margin-bottom:7px}
+.finding .ft{font-weight:600;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.finding p{margin:6px 0 0;color:#32456a}
+.mgmt{background:rgba(0,145,255,.07);border:1px solid rgba(0,145,255,.22);border-radius:9px;padding:10px 13px;color:#0b3f73}
+.mgmt b{color:#0062b3}
+.mlbar{height:8px;background:rgba(13,27,54,.08);border-radius:99px;overflow:hidden;flex:1;max-width:280px}
+.mlbar i{display:block;height:100%;background:linear-gradient(90deg,var(--cy),var(--vi),var(--mg));border-radius:99px}
+.mlrow{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.mlrow b{font-family:'JetBrains Mono',monospace;color:var(--ml)}
+
+/* ── MATRIX ─────────────────────────────── */
+.matrix{overflow:auto;margin-bottom:17px}
+.matrix table{border-collapse:separate;border-spacing:4px;font-size:11.5px}
+.matrix th{font-weight:500;color:var(--muted);padding:2px 7px;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:10.5px}
+.matrix th.rot{height:96px;vertical-align:bottom}
+.matrix th.rot div{transform:rotate(-50deg);transform-origin:left bottom;width:24px;white-space:nowrap;margin-left:15px}
+.matrix td{width:36px;height:32px;border-radius:7px;text-align:center;cursor:pointer;font-weight:700;font-size:10px;font-family:'JetBrains Mono',monospace;transition:.15s;border:1px solid transparent}
+.matrix td:hover{transform:scale(1.14);z-index:2;position:relative}
+.m4{background:var(--s4);color:#fff;box-shadow:0 3px 10px rgba(225,29,72,.4)}
+.m3{background:#f97316;color:#fff;box-shadow:0 3px 9px rgba(249,115,22,.35)}
+.m2{background:#fbbf24;color:#5c3a00;box-shadow:0 3px 9px rgba(251,191,36,.3)}
+.m1{background:#7dd3fc;color:#04354f}
+.m0{background:rgba(5,150,105,.1);color:#059669;border-color:rgba(5,150,105,.2)}
+.mml{background:#a78bfa;color:#2e1065;box-shadow:0 3px 9px rgba(167,139,250,.4)}
+.mself{background:rgba(13,27,54,.045)}
+
+/* ── TABLES ─────────────────────────────── */
+table.lib{width:100%;border-collapse:collapse;font-size:13px}
+table.lib th{text-align:left;font-family:'Chakra Petch',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#17407e;padding:9px;border-bottom:2px solid var(--line2);position:sticky;top:0;background:#fff;z-index:2}
+table.lib td{padding:9px;border-bottom:1px solid var(--line);vertical-align:top;color:#32456a}
+table.lib tr:hover td{background:rgba(0,145,255,.04)}
+.tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 7px;border-radius:5px;background:rgba(13,27,54,.05);color:#4a5e80;margin:1px 2px 1px 0;border:1px solid rgba(13,27,54,.08)}
+.tag.i{background:rgba(236,72,153,.1);color:#be185d;border-color:rgba(236,72,153,.24)}
+.tag.d{background:rgba(2,132,199,.1);color:#0369a1;border-color:rgba(2,132,199,.24)}
+.tag.s{background:rgba(5,150,105,.1);color:#047857;border-color:rgba(5,150,105,.22)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+@media(max-width:820px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpis .stat b{font-size:25px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:920px){.two{grid-template-columns:1fr}}
+textarea{width:100%;min-height:150px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:11px;background:#fff;color:var(--ink)}
+textarea:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(0,145,255,.12)}
+input[type=file]{color:var(--muted);font-size:12.5px}
+input[type=file]::file-selector-button{font-family:'Chakra Petch',sans-serif;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);background:#fff;color:#2d4a7a;padding:7px 12px;border-radius:8px;cursor:pointer;margin-right:10px}
+input[type=file]::file-selector-button:hover{border-color:var(--cy);background:rgba(0,145,255,.07)}
+#libq{background:#fff;color:var(--ink);border:1px solid var(--line)}
+#libq:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(0,145,255,.12)}
+.log{background:#0d1b36;color:#6ee7b7;font-family:'JetBrains Mono',monospace;font-size:11.5px;border-radius:10px;padding:13px;min-height:60px;white-space:pre-wrap;max-height:260px;overflow:auto;box-shadow:inset 0 2px 10px rgba(0,0,0,.3)}
+.note{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#92400e;border-radius:10px;padding:11px 13px;font-size:12.5px}
+.arch{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;margin:12px 0}
+.arch .box{flex:1;min-width:158px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#fff;transition:.2s;box-shadow:0 2px 8px rgba(28,55,110,.06)}
+.arch .box:hover{border-color:var(--cy);box-shadow:0 6px 18px rgba(0,145,255,.16);transform:translateY(-2px)}
+.arch .box b{display:block;margin-bottom:4px;font-family:'Chakra Petch',sans-serif;letter-spacing:.06em;color:#0062b3;font-size:12px;text-transform:uppercase}
+.arch .ar{align-self:center;color:var(--vi);font-size:19px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0d1b36;color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:70;box-shadow:0 10px 30px rgba(13,27,54,.35)}
+.toast.on{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(13,27,54,.45);display:none;place-items:center;z-index:80;padding:20px;backdrop-filter:blur(6px)}
+.modal.on{display:grid}
+.modal .card{max-width:720px;width:100%}
+footer{text-align:center;color:var(--dim);font-size:11.5px;padding:24px;font-family:'JetBrains Mono',monospace;letter-spacing:.03em}
+ol.refs li{margin-bottom:7px;color:#32456a}
+.rulelist td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top;color:#32456a}
+.rulelist b{color:var(--ink)}
+.ctxrow{display:flex;flex-direction:column;gap:9px}
+.ctxrow label{display:flex;gap:9px;align-items:center;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.ctxrow input{width:16px;height:16px;accent-color:var(--cy);cursor:pointer;flex:none}
+.savedlist{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.savedlist .row{display:flex;align-items:center;gap:8px;font-size:13px;background:rgba(76,110,180,.05);border:1px solid var(--line);border-radius:8px;padding:6px 8px 6px 11px}
+.savedlist .row span{flex:1;cursor:pointer;color:#17407e;font-weight:500}
+.savedlist .row span:hover{color:var(--cy)}
+.savedlist .row small{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px}
+.savedlist .row button{border:0;background:rgba(13,27,54,.07);color:var(--muted);width:20px;height:20px;border-radius:50%;cursor:pointer;line-height:1;font-size:13px;flex:none}
+.savedlist .row button:hover{background:var(--s4);color:#fff}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.fchip{border:1px solid var(--line);background:#fff;padding:5px 12px;border-radius:99px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--muted);transition:.15s}
+.fchip:hover{border-color:var(--cy);color:var(--ink)}
+.fchip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.burden{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:11px}
+.bcard{border:1px solid var(--line);border-radius:11px;padding:13px 15px;background:#fff}
+.bcard.hi{border-color:rgba(225,29,72,.35);background:rgba(225,29,72,.05)}
+.bcard.md{border-color:rgba(217,119,6,.32);background:rgba(217,119,6,.05)}
+.bhead{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.bhead b{font-size:13.5px;flex:1}
+.bcount{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--soft,rgba(13,27,54,.06));color:var(--muted)}
+.bcard.hi .bcount{background:var(--s4);color:#fff}
+.bcard.md .bcount{background:rgba(217,119,6,.18);color:#92400e}
+.bdrugs{font-size:12px;color:var(--muted);line-height:1.5}
+.ctxnote{background:rgba(124,58,237,.07);border:1px solid rgba(124,58,237,.22);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12.5px;color:#512a8f}
+.sev.up{box-shadow:0 0 0 2px rgba(124,58,237,.3)}
+
+.gate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;overflow:auto;background:linear-gradient(160deg,rgba(234,241,255,.96),rgba(243,246,253,.98));backdrop-filter:blur(10px)}
+.gate.off{display:none}
+.gatecard{max-width:620px;width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 28px;box-shadow:0 24px 60px rgba(28,55,110,.2);position:relative;overflow:hidden}
+.gatecard::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--s4),var(--am),var(--cy))}
+.gateicon{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--s4b);color:var(--s4);border:1px solid rgba(225,29,72,.3);margin-bottom:14px}
+.gatecard h2{font-family:'Chakra Petch',sans-serif;font-size:19px;letter-spacing:.03em;text-transform:none;color:var(--ink);display:block}
+.gatecard h2::before{display:none}
+.gatelead{font-size:13.5px;color:#32456a;margin:8px 0}
+.gatelist{margin:12px 0;padding-left:18px;font-size:13px;color:#32456a}
+.gatelist li{margin-bottom:7px}
+.gatecheck{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--ink);background:rgba(0,145,255,.06);border:1px solid rgba(0,145,255,.22);border-radius:10px;padding:12px 14px;cursor:pointer}
+.gatecheck input{margin-top:2px;width:17px;height:17px;accent-color:var(--cy);flex:none;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.5)}
+.btn:disabled:hover{box-shadow:none;filter:grayscale(.5)}
+.auth{position:fixed;inset:0;z-index:210;display:grid;place-items:center;padding:20px;overflow:auto;background:linear-gradient(150deg,#e6eeff,#f3f6fd 50%,#fdf2f8)}
+.auth.off{display:none}
+.authcard{max-width:420px;width:100%;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 28px;box-shadow:0 24px 60px rgba(28,55,110,.18);position:relative;overflow:hidden}
+.authcard::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--cy),var(--vi),var(--mg))}
+.authbrand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.authtitle{font-family:'Chakra Petch',sans-serif;font-size:19px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:linear-gradient(95deg,var(--ink),var(--cy) 60%,var(--vi));-webkit-background-clip:text;background-clip:text;color:transparent}
+.authsub{font-size:11.5px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.authtabs{display:flex;gap:4px;background:rgba(76,110,180,.07);border-radius:10px;padding:4px;margin-bottom:16px}
+.authtab{flex:1;border:0;background:transparent;padding:8px;border-radius:7px;cursor:pointer;font-family:'Chakra Petch',sans-serif;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);transition:.18s}
+.authtab.on{background:#fff;color:#17407e;box-shadow:0 1px 4px rgba(28,55,110,.12)}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-family:'Chakra Petch',sans-serif}
+.fld input,.fld select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:14px;background:#fff;color:var(--ink)}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--cy);box-shadow:0 0 0 3px rgba(0,145,255,.13)}
+.autherr{font-size:12.5px;color:var(--s4);min-height:17px;margin-bottom:4px}
+.authalt{text-align:center;margin-top:12px}
+.linkbtn{border:0;background:none;color:var(--cy);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px}
+.linkbtn:hover{color:var(--vi)}
+.authnote{margin-top:16px;font-size:11.5px;line-height:1.5;color:#92400e;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.28);border-radius:9px;padding:10px 12px}
+.who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.who b{color:#17407e;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="11" height="8" rx="4" transform="rotate(-35 7.5 12)"/><circle cx="17" cy="15" r="5"/><path d="M14 18l6-6"/></svg></div>
+    <div>
+      <h1>MedSecure</h1>
+      <div class="sub">Drug–drug interaction analysis · Knowledge base + Pharmacological rule engine + Machine learning</div>
+    </div>
+    <div class="pillrow"><span class="hpill" id="hp-drugs">– drugs</span><span class="hpill" id="hp-kb">– curated pairs</span><span class="hpill" id="hp-auc">ML AUC –</span><span class="who" id="who"></span></div>
+  </div>
+  <nav id="nav">
+    <a href="#checker" data-v="checker" class="on">Interaction Checker</a>
+    <a href="#library" data-v="library">Drug Library</a>
+    <a href="#model" data-v="model">ML Model</a>
+    <a href="#data" data-v="data">Data Import</a>
+    <a href="#about" data-v="about">Method &amp; About</a>
+  </nav>
+</header>
+
+<main>
+<!-- CHECKER -->
+<section class="view on" id="v-checker">
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Patient medication list</h2>
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="q" placeholder="Type a drug name (e.g. warfarin)…" autocomplete="off">
+          <div class="dd" id="dd"></div>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn sm" id="clearBtn">Clear all</button>
+          <button class="btn sm" id="copyBtn">Copy report</button>
+          <button class="btn sm" id="csvBtn">Copy CSV</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>Patient context <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:11.5px">optional</span></h2>
+        <div class="ctxrow"><label><input type="checkbox" data-ctx="elderly"> Age 65 or over</label><label><input type="checkbox" data-ctx="renal"> Renal impairment</label><label><input type="checkbox" data-ctx="hepatic"> Hepatic impairment</label></div>
+        <p class="muted small" style="margin:10px 0 0">These do not create new interactions. Where a pair is already flagged, they raise its severity by one step and say why &mdash; the factors a pair-only checker ignores.</p>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>Saved regimens</h2>
+        <div style="display:flex;gap:7px"><input id="saveName" placeholder="Name this regimen&hellip;" style="flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;background:#fff;color:var(--ink)"><button class="btn sm" id="saveBtn">Save</button></div>
+        <div id="savedList" class="savedlist"></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>Example regimens</h2>
+        <div class="presets" id="presets"></div>
+        <p class="muted small" style="margin:10px 0 0">Load a clinical scenario to see the three engines working together.</p>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h2>Severity scale</h2>
+        <div style="display:grid;gap:9px" class="small">
+          <div style="display:flex;gap:10px;align-items:flex-start"><span class="sev s4" style="flex:none">Contraindicated</span><span class="muted">Do not combine</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span class="sev s3" style="flex:none">Major</span><span class="muted">Avoid, or use only with close monitoring</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span class="sev s2" style="flex:none">Moderate</span><span class="muted">Monitor / adjust dose</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span class="sev s1" style="flex:none">Minor</span><span class="muted">Little clinical effect expected</span></div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span class="sev sml" style="flex:none">ML-flagged</span><span class="muted">No known or rule-based finding, but the model predicts risk (p ≥ 0.70)</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div id="out"></div>
+    </div>
+  </div>
+</section>
+
+<!-- LIBRARY -->
+<section class="view" id="v-library">
+  <div class="card">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="margin:0">Drug library &amp; pharmacological profiles</h2>
+      <input id="libq" placeholder="Filter by name, class, CYP or flag…" style="margin-left:auto;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;min-width:260px">
+    </div>
+    <p class="muted small" style="margin-top:0">Each profile records the drug's CYP450 role (<span class="tag s">substrate</span><span class="tag i">inhibitor</span><span class="tag d">inducer</span>), transporter role and pharmacodynamic risk flags. The rule engine and the ML feature extractor both read these profiles.</p>
+    <div style="max-height:640px;overflow:auto"><table class="lib" id="libT"></table></div>
+  </div>
+</section>
+
+<!-- MODEL -->
+<section class="view" id="v-model">
+  <div class="kpis" id="kpis"></div>
+  <div class="two" style="margin-top:16px">
+    <div class="card"><h2>ROC curve (held-out test set)</h2><div id="roc"></div><p class="muted small" id="rocNote"></p></div>
+    <div class="card"><h2>Learned feature weights (logistic regression)</h2><div id="wts"></div><p class="muted small">Positive weights push a pair towards "interacting". This shows which mechanisms the model has learned to treat as clinically significant.</p></div>
+  </div>
+  <div class="two" style="margin-top:16px">
+    <div class="card">
+      <h2>Training set</h2>
+      <div id="dsinfo" class="small"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri sm" id="retrain">Retrain model</button><button class="btn sm" id="reseed">Retrain with new random seed</button></div>
+    </div>
+    <div class="card">
+      <h2>How the model works</h2>
+      <div class="small">
+        <p style="margin-top:0"><b>Task:</b> binary classification. Will a drug pair have a clinically significant interaction (moderate or worse)?</p>
+        <p><b>Features (26):</b> each pair becomes a vector of mechanistic features built from the two drug profiles. Examples: <i>strong CYP inhibitor × substrate</i>, <i>both QT-prolonging</i>, <i>P-gp inhibitor × P-gp substrate</i>, <i>narrow therapeutic index involved</i>, and the Jaccard similarity of the two profiles. Two more features feed in the rule engine's output (its highest severity and number of findings), which makes this a <i>hybrid</i> knowledge + ML model.</p>
+        <p><b>Labels (positive–unlabelled learning):</b> positives are curated interactions plus any imported DrugBank/TWOSIDES pairs. Negatives are curated "no significant interaction" pairs plus randomly sampled unlabelled pairs, at 4 unlabelled pairs per positive. This is standard practice in DDI prediction because true negatives are rarely documented.</p>
+        <p><b>Algorithm:</b> L2-regularised logistic regression with balanced class weights, trained by batch gradient descent in the browser. Evaluation uses a stratified 80/20 split plus 5-fold cross-validation, compared against a rules-only baseline.</p>
+        <p style="margin-bottom:0"><b>Use:</b> the model scores <i>every</i> pair, including pairs missing from the knowledge base, and explains each score by the features that contributed most.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA -->
+<section class="view" id="v-data">
+  <div class="two">
+    <div class="card">
+      <h2>Import DrugBank / TWOSIDES data</h2>
+      <p class="small muted" style="margin-top:0">Load a CSV to extend the knowledge base. The format is detected from the header row. Imported pairs show in results with their source and become positive training examples for the ML model.</p>
+      <input type="file" id="file" accept=".csv,.tsv,.txt">
+      <p class="small" style="margin:10px 0 4px">…or paste CSV text:</p>
+      <textarea id="paste" placeholder="drug1,drug2,severity,description,management"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn pri sm" id="importBtn">Import pasted data</button>
+        <button class="btn sm" id="sampleDB">Load DrugBank-style example</button>
+        <button class="btn sm" id="sampleTS">Load TWOSIDES-style example</button>
+      </div>
+      <h3>Import log</h3>
+      <div class="log" id="log">Ready.</div>
+    </div>
+    <div class="card">
+      <h2>Supported formats</h2>
+      <h3>1. DrugBank-style interaction table</h3>
+      <p class="small">Columns: <code>drug1, drug2, severity, description, management</code> (severity: contraindicated / major / moderate / minor). DrugBank data requires a free academic licence from go.drugbank.com. Export the interaction table from the XML and save it as CSV.</p>
+      <h3>2. TWOSIDES (nSIDES) adverse-event signals</h3>
+      <p class="small">Columns: <code>drug_1_concept_name, drug_2_concept_name, condition_concept_name, PRR</code>. TWOSIDES is open data from the Tatonetti Lab (nsides.io), mined from FDA FAERS reports. Rows are grouped by drug pair and the strongest signals are kept. Pairs with PRR ≥ 2 count as moderate pharmacovigilance signals.</p>
+      <div class="note">The full TWOSIDES file has ~42 M rows, which is too large for a browser. Filter it first with the companion Python script (<code>train_ddi_model.py</code>), for example to your study drugs, or PRR ≥ 2 and ≥ 10 reports, then import the reduced CSV here.</div>
+      <h3>Export for Python pipeline</h3>
+      <p class="small">Copy the drug-profile table as CSV. The Python script uses it to build the same mechanistic features from real TWOSIDES data.</p>
+      <button class="btn sm" id="expProfiles">Copy drug_profiles.csv</button>
+      <button class="btn sm" id="expKB">Copy curated KB (CSV)</button>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="view" id="v-about">
+  <div class="card">
+    <h2>System architecture</h2>
+    <div class="arch">
+      <div class="box"><b>1 · Input</b><span class="small muted">Medication list → every pair is generated (n·(n−1)/2)</span></div>
+      <div class="ar">→</div>
+      <div class="box"><b>2 · Knowledge base</b><span class="small muted">Curated clinical interactions + imported DrugBank / TWOSIDES records</span></div>
+      <div class="ar">→</div>
+      <div class="box"><b>3 · Rule engine</b><span class="small muted">15 pharmacokinetic and pharmacodynamic rules run on drug profiles</span></div>
+      <div class="ar">→</div>
+      <div class="box"><b>4 · ML predictor</b><span class="small muted">Logistic regression on 26 hybrid pair features</span></div>
+      <div class="ar">→</div>
+      <div class="box"><b>5 · Patient context</b><span class="small muted">Age, renal and hepatic status raise an existing flag by one step, never above major</span></div>
+      <div class="ar">→</div>
+      <div class="box"><b>6 · Verdict</b><span class="small muted">Highest severity + evidence, mechanism, management, plus whole-regimen burden</span></div>
+    </div>
+    <h3>Beyond the pair</h3>
+    <p class="small">Two risks are not pairwise. <b>Patient context</b> (age 65+, renal impairment, hepatic impairment) changes how much an existing interaction matters, so where a pair is already flagged the tool raises it one step and states the reason; it never manufactures an interaction from context alone, and never escalates to contraindicated, which is a labelling status rather than something a risk factor confers. <b>Whole-regimen burden</b> counts how many drugs in the list carry the same risk attribute — QT prolongation, bleeding, sedation, serotonergic activity, anticholinergic load, potassium retention, nephrotoxicity, narrow therapeutic index — because the classic triple whammy and anticholinergic burden scales are count-based risks that a pair-by-pair check cannot see.</p>
+    <h3>Rule catalogue</h3>
+    <table class="rulelist small" id="rulesT" style="border-collapse:collapse;width:100%"></table>
+  </div>
+  <div class="two" style="margin-top:16px">
+    <div class="card">
+      <h2>Disclaimer</h2>
+      <div class="note">This app is an educational B.Pharm project prototype. The built-in knowledge base is a curated teaching subset drawn from standard drug-interaction references. It is <b>not</b> a full or licensed DrugBank copy, and it must not be used for real clinical decisions. Always check a professional reference (e.g., Stockley's, Lexicomp, Micromedex, BNF/NFI) and use professional judgement.</div>
+    </div>
+    <div class="card">
+      <h2>Key references</h2>
+      <ol class="refs small">
+        <li>Wishart DS et al. DrugBank 5.0: a major update to the DrugBank database. <i>Nucleic Acids Res.</i> 2018;46:D1074–82.</li>
+        <li>Tatonetti NP, Ye PP, Daneshjou R, Altman RB. Data-driven prediction of drug effects and interactions. <i>Sci Transl Med.</i> 2012;4(125):125ra31. (TWOSIDES)</li>
+        <li>US FDA. Drug Development and Drug Interactions: Table of Substrates, Inhibitors and Inducers.</li>
+        <li>Flockhart DA. Drug Interactions: Cytochrome P450 Drug Interaction Table. Indiana University School of Medicine.</li>
+        <li>Baxter K, Preston CL (eds). <i>Stockley's Drug Interactions.</i> Pharmaceutical Press.</li>
+        <li>CredibleMeds®. QTdrugs list (QT-prolongation risk categories).</li>
+      </ol>
+    </div>
+  </div>
+</section>
+</main>
+<footer>
+  <div style="max-width:880px;margin:0 auto;text-align:left;background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.28);border-radius:10px;padding:13px 16px;color:#9f1239;font-family:'Space Grotesk',sans-serif;font-size:12.5px;line-height:1.5">
+    <b style="font-family:'Chakra Petch',sans-serif;letter-spacing:.07em;text-transform:uppercase;font-size:11.5px">Not a medical device &middot; Not for clinical use</b><br>
+    This is an educational student project. Its knowledge base is a curated teaching subset, not a complete or licensed interaction database, and a pair it does not flag is <b>not</b> proven safe. Nothing here is medical advice. Never start, stop or change a medicine based on this tool. Consult a qualified pharmacist or physician and a professional reference such as Stockley&rsquo;s, Lexicomp, Micromedex, the BNF or the National Formulary of India.
+  </div>
+  <div style="margin-top:14px">MedSecure &middot; B.Pharm project prototype &middot; Built for education and research &middot; <a href="#about" style="color:var(--cy)">Method &amp; limitations</a></div>
+</footer>
+<div class="auth" id="auth">
+  <div class="authcard">
+    <div class="authbrand">
+      <div class="logo" style="width:40px;height:40px;border-radius:11px"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="2" y="8" width="11" height="8" rx="4" transform="rotate(-35 7.5 12)"/><circle cx="17" cy="15" r="5"/><path d="M14 18l6-6"/></svg></div>
+      <div><div class="authtitle">MedSecure</div><div class="authsub">Drug&ndash;drug interaction analysis</div></div>
+    </div>
+    <div class="authtabs"><button class="authtab on" data-mode="in">Sign in</button><button class="authtab" data-mode="up">Create account</button></div>
+    <form id="authForm" autocomplete="on">
+      <div class="fld" id="fldName"><label for="auName">Full name</label><input id="auName" type="text" autocomplete="name" placeholder="Your name"></div>
+      <div class="fld"><label for="auEmail">Email</label><input id="auEmail" type="email" autocomplete="username" placeholder="you@example.com" required></div>
+      <div class="fld"><label for="auPass">Password</label><input id="auPass" type="password" autocomplete="current-password" placeholder="At least 8 characters" required></div>
+      <div class="fld" id="fldRole"><label for="auRole">I am a</label><select id="auRole"><option>Pharmacy student</option><option>Pharmacist</option><option>Physician or nurse</option><option>Researcher or academic</option><option>Other</option></select></div>
+      <div class="autherr" id="auErr"></div>
+      <button class="btn pri" type="submit" id="auGo" style="width:100%;margin-top:4px">Sign in</button>
+    </form>
+    <div class="authalt"><button class="linkbtn" id="auGuest">Continue as a guest</button></div>
+    <div class="authnote"><b>Demonstration sign-in.</b> Accounts are stored only in this browser and no data is sent anywhere. This is a student project, not a secured service &mdash; do not reuse a real password, and do not enter patient information anywhere in this tool.</div>
+  </div>
+</div>
+<div class="gate" id="gate">
+  <div class="gatecard">
+    <div class="gateicon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
+    <h2 style="margin:0 0 4px">Before you use this tool</h2>
+    <p class="gatelead">MedSecure is an <b>educational student project</b>, not a medical device and not a clinical decision support system. It has not been validated for patient care.</p>
+    <ul class="gatelist">
+      <li><b>It is incomplete.</b> The knowledge base is a curated teaching subset of around 80 drugs. If it reports no interaction, that is <b>not</b> evidence the combination is safe.</li>
+      <li><b>It ignores the patient.</b> It does not consider dose, route, duration, age, pregnancy, genotype, or kidney or liver function.</li>
+      <li><b>Part of it is a prediction.</b> The machine-learning score is a statistical estimate, and pharmacovigilance signals show association, not causation.</li>
+      <li><b>It is not advice.</b> Never start, stop or change any medicine based on this tool.</li>
+    </ul>
+    <p class="gatelead" style="margin-bottom:16px">If you have a question about your own medicines, speak to a pharmacist or doctor. For clinical work, use a professional reference such as Stockley's, Lexicomp, Micromedex, the BNF or the National Formulary of India.</p>
+    <label class="gatecheck"><input type="checkbox" id="gateAgree"> I understand this is an educational tool and will not use it to make decisions about anyone's medicines.</label>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn pri" id="gateBtn" disabled>Continue to the tool</button>
+      <a class="btn" href="https://www.nhp.gov.in/" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">Leave</a>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="card"><h2 id="mTitle">Copy</h2><p class="small muted">Your browser blocked automatic copying. Select the text below and copy it manually.</p><textarea id="mText" style="min-height:260px"></textarea><div style="margin-top:10px;text-align:right"><button class="btn" id="mClose">Close</button></div></div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   1. DRUG KNOWLEDGE BASE — pharmacological profiles
+   sub = CYP substrate; inh = CYP inhibitor {cyp: strong|moderate}; ind = CYP inducer
+   prodrug = CYP needed for activation
+   flags: anticoag antiplatelet nsaid ssri qt sero maoi cns cnsMild opioid benzo alcohol kUp kDown nephro
+          hypoT hypoG brady nti sensitive pgpS pgpI pgpInd chelator chelatable lithium lithiumRaise glycoside
+          disulfiram antifolate thiopurine xoi nitrate pde5 steroid betablocker antichol myopathy
+   ============================================================ */
+const DRUGS_RAW = [
+ ["Warfarin","Anticoagulant (VKA)",{sub:["2C9","3A4","1A2"],f:["anticoag","nti"]}],
+ ["Apixaban","Anticoagulant (DOAC)",{sub:["3A4"],f:["anticoag","pgpS"]}],
+ ["Rivaroxaban","Anticoagulant (DOAC)",{sub:["3A4"],f:["anticoag","pgpS"]}],
+ ["Dabigatran","Anticoagulant (DOAC)",{f:["anticoag","pgpS"]}],
+ ["Clopidogrel","Antiplatelet (P2Y12 inhibitor)",{prodrug:"2C19",f:["antiplatelet"]}],
+ ["Aspirin","Antiplatelet (low-dose) / salicylate",{f:["antiplatelet"]}],
+ ["Ibuprofen","NSAID",{sub:["2C9"],f:["nsaid","nephro","lithiumRaise"]}],
+ ["Diclofenac","NSAID",{sub:["2C9"],f:["nsaid","nephro","lithiumRaise"]}],
+ ["Naproxen","NSAID",{f:["nsaid","nephro","lithiumRaise"]}],
+ ["Paracetamol","Analgesic / antipyretic",{f:[]}],
+ ["Simvastatin","HMG-CoA reductase inhibitor (statin)",{sub:["3A4"],f:["sensitive","myopathy"]}],
+ ["Atorvastatin","HMG-CoA reductase inhibitor (statin)",{sub:["3A4"],f:["myopathy"]}],
+ ["Rosuvastatin","HMG-CoA reductase inhibitor (statin)",{f:["myopathy"]}],
+ ["Clarithromycin","Macrolide antibiotic",{inh:{"3A4":"strong"},sub:["3A4"],f:["pgpI","qt"]}],
+ ["Erythromycin","Macrolide antibiotic",{inh:{"3A4":"moderate"},sub:["3A4"],f:["pgpI","qt"]}],
+ ["Azithromycin","Macrolide antibiotic",{f:["qt"]}],
+ ["Ciprofloxacin","Fluoroquinolone antibiotic",{inh:{"1A2":"strong"},f:["qt","chelatable"]}],
+ ["Levofloxacin","Fluoroquinolone antibiotic",{f:["qt","chelatable"]}],
+ ["Fluconazole","Azole antifungal",{inh:{"2C9":"moderate","2C19":"strong","3A4":"moderate"},f:["qt"]}],
+ ["Ketoconazole","Azole antifungal",{inh:{"3A4":"strong"},f:["pgpI","qt"]}],
+ ["Itraconazole","Azole antifungal",{inh:{"3A4":"strong"},sub:["3A4"],f:["pgpI"]}],
+ ["Metronidazole","Nitroimidazole antimicrobial",{inh:{"2C9":"moderate"},f:["disulfiram"]}],
+ ["Co-trimoxazole","Sulfonamide + trimethoprim antibiotic",{inh:{"2C9":"moderate"},f:["kUp","antifolate"]}],
+ ["Linezolid","Oxazolidinone antibiotic (reversible MAOI)",{f:["sero","maoi"]}],
+ ["Rifampicin","Rifamycin (antitubercular)",{ind:["3A4","2C9","2C19","1A2"],f:["pgpInd"]}],
+ ["Carbamazepine","Antiepileptic",{sub:["3A4"],ind:["3A4","1A2","2C9"],f:["nti","cns","pgpInd"]}],
+ ["Phenytoin","Antiepileptic",{sub:["2C9","2C19"],ind:["3A4"],f:["nti"]}],
+ ["Phenobarbital","Antiepileptic (barbiturate)",{ind:["3A4","2C9"],f:["cns"]}],
+ ["Fluoxetine","SSRI antidepressant",{sub:["2D6"],inh:{"2D6":"strong","2C19":"moderate"},f:["sero","ssri"]}],
+ ["Paroxetine","SSRI antidepressant",{sub:["2D6"],inh:{"2D6":"strong"},f:["sero","ssri","antichol"]}],
+ ["Sertraline","SSRI antidepressant",{f:["sero","ssri"]}],
+ ["Citalopram","SSRI antidepressant",{sub:["2C19","3A4"],f:["sero","ssri","qt"]}],
+ ["Escitalopram","SSRI antidepressant",{sub:["2C19","3A4"],f:["sero","ssri","qt"]}],
+ ["Amitriptyline","Tricyclic antidepressant",{sub:["2D6","2C19"],f:["sero","qt","antichol","cns"]}],
+ ["Tramadol","Opioid analgesic (SNRI activity)",{sub:["3A4"],prodrug:"2D6",f:["sero","cns","opioid"]}],
+ ["Codeine","Opioid analgesic",{prodrug:"2D6",f:["cns","opioid"]}],
+ ["Morphine","Opioid analgesic",{f:["cns","opioid"]}],
+ ["Oxycodone","Opioid analgesic",{sub:["3A4"],f:["cns","opioid"]}],
+ ["Fentanyl","Opioid analgesic",{sub:["3A4"],f:["cns","opioid","sero","sensitive"]}],
+ ["Sumatriptan","Triptan (antimigraine)",{f:["sero"]}],
+ ["Ondansetron","5-HT3 antagonist (antiemetic)",{f:["qt","sero"]}],
+ ["Alprazolam","Benzodiazepine",{sub:["3A4"],f:["cns","benzo"]}],
+ ["Diazepam","Benzodiazepine",{sub:["2C19","3A4"],f:["cns","benzo"]}],
+ ["Zolpidem","Z-drug hypnotic",{sub:["3A4"],f:["cns"]}],
+ ["Quetiapine","Atypical antipsychotic",{sub:["3A4"],f:["qt","cns","sensitive"]}],
+ ["Haloperidol","Typical antipsychotic",{sub:["2D6","3A4"],f:["qt","cns"]}],
+ ["Lithium","Mood stabiliser",{f:["nti","lithium"]}],
+ ["Digoxin","Cardiac glycoside",{f:["pgpS","nti","glycoside","brady"]}],
+ ["Amiodarone","Class III antiarrhythmic",{inh:{"2C9":"moderate","2D6":"moderate"},f:["pgpI","qt","brady"]}],
+ ["Verapamil","Calcium channel blocker (non-DHP)",{sub:["3A4"],inh:{"3A4":"moderate"},f:["pgpI","hypoT","brady"]}],
+ ["Diltiazem","Calcium channel blocker (non-DHP)",{sub:["3A4"],inh:{"3A4":"moderate"},f:["hypoT","brady"]}],
+ ["Amlodipine","Calcium channel blocker (DHP)",{sub:["3A4"],f:["hypoT"]}],
+ ["Metoprolol","Beta-blocker (cardioselective)",{sub:["2D6"],f:["hypoT","brady","betablocker"]}],
+ ["Atenolol","Beta-blocker (cardioselective)",{f:["hypoT","brady","betablocker"]}],
+ ["Lisinopril","ACE inhibitor",{f:["kUp","hypoT","lithiumRaise"]}],
+ ["Losartan","Angiotensin II receptor blocker",{sub:["2C9","3A4"],f:["kUp","hypoT","lithiumRaise"]}],
+ ["Spironolactone","Potassium-sparing diuretic",{f:["kUp","hypoT"]}],
+ ["Potassium chloride","Electrolyte supplement",{f:["kUp"]}],
+ ["Furosemide","Loop diuretic",{f:["kDown","hypoT"]}],
+ ["Hydrochlorothiazide","Thiazide diuretic",{f:["kDown","hypoT","lithiumRaise"]}],
+ ["Nitroglycerin","Organic nitrate vasodilator",{f:["hypoT","nitrate"]}],
+ ["Isosorbide mononitrate","Organic nitrate vasodilator",{f:["hypoT","nitrate"]}],
+ ["Sildenafil","PDE5 inhibitor",{sub:["3A4"],f:["hypoT","pde5"]}],
+ ["Metformin","Biguanide antidiabetic",{f:[]}],
+ ["Glimepiride","Sulfonylurea antidiabetic",{sub:["2C9"],f:["hypoG"]}],
+ ["Insulin","Insulin",{f:["hypoG"]}],
+ ["Methotrexate","Antimetabolite / DMARD",{f:["nti","nephro","antifolate"]}],
+ ["Azathioprine","Thiopurine immunosuppressant",{f:["thiopurine"]}],
+ ["Allopurinol","Xanthine oxidase inhibitor",{f:["xoi"]}],
+ ["Cyclosporine","Calcineurin inhibitor",{sub:["3A4"],inh:{"3A4":"moderate"},f:["pgpS","pgpI","nti","nephro","kUp"]}],
+ ["Tacrolimus","Calcineurin inhibitor",{sub:["3A4"],f:["pgpS","nti","nephro","kUp","qt"]}],
+ ["Ritonavir","HIV protease inhibitor / PK booster",{inh:{"3A4":"strong","2D6":"moderate"},f:["pgpI"]}],
+ ["Colchicine","Antigout (microtubule inhibitor)",{sub:["3A4"],f:["pgpS","nti"]}],
+ ["Theophylline","Methylxanthine bronchodilator",{sub:["1A2"],f:["nti"]}],
+ ["Tizanidine","Centrally acting muscle relaxant",{sub:["1A2"],f:["sensitive","hypoT","cns"]}],
+ ["Omeprazole","Proton pump inhibitor",{sub:["2C19"],inh:{"2C19":"moderate"},f:[]}],
+ ["Pantoprazole","Proton pump inhibitor",{sub:["2C19"],f:[]}],
+ ["Levothyroxine","Thyroid hormone",{f:["chelatable"]}],
+ ["Calcium carbonate","Antacid / calcium supplement",{f:["chelator"]}],
+ ["Prednisolone","Corticosteroid",{sub:["3A4"],f:["kDown","steroid"]}],
+ ["Cetirizine","H1 antihistamine (2nd gen)",{f:["cnsMild"]}],
+ ["Alcohol (ethanol)","Social substance",{f:["cns","alcohol"]}],
+ ["Grapefruit juice","Food (intestinal CYP3A4 inhibitor)",{inh:{"3A4":"moderate"},f:[]}],
+ ["St John's Wort","Herbal (Hypericum perforatum)",{ind:["3A4","2C9","2C19"],f:["pgpInd","sero"]}]
+];
+
+/* Curated clinical interaction knowledge base [drugA, drugB, severity, effect, management] */
+const KB_RAW = [
+ ["Warfarin","Aspirin","major","Additive bleeding risk (anticoagulant + antiplatelet), including GI haemorrhage.","Avoid unless specifically indicated (e.g., mechanical valve). Use the lowest aspirin dose, consider a PPI and monitor for bleeding."],
+ ["Warfarin","Ibuprofen","major","NSAID antiplatelet effect plus GI mucosal injury increases bleeding; INR may rise.","Avoid; prefer paracetamol. If unavoidable: short course + PPI + INR monitoring."],
+ ["Warfarin","Diclofenac","major","NSAID antiplatelet effect plus GI mucosal injury increases bleeding risk.","Avoid; prefer paracetamol. If unavoidable: short course + PPI + INR monitoring."],
+ ["Warfarin","Naproxen","major","NSAID antiplatelet effect plus GI mucosal injury increases bleeding risk.","Avoid; prefer paracetamol. If unavoidable: short course + PPI + INR monitoring."],
+ ["Warfarin","Fluconazole","major","Fluconazole inhibits CYP2C9 (S-warfarin metabolism), causing a marked rise in INR.","Reduce warfarin dose and monitor INR within 3–5 days; consider an alternative antifungal."],
+ ["Warfarin","Metronidazole","major","CYP2C9 inhibition raises S-warfarin levels, INR and bleeding risk.","Avoid if possible; otherwise reduce warfarin dose and monitor INR closely."],
+ ["Warfarin","Co-trimoxazole","major","Sulfamethoxazole inhibits CYP2C9 and displaces warfarin from protein binding, raising INR.","Use an alternative antibiotic; if essential, monitor INR closely."],
+ ["Warfarin","Amiodarone","major","Amiodarone inhibits warfarin metabolism; INR rises over weeks and the effect persists for months.","Reduce warfarin dose (often 30–50%) and monitor INR weekly for several weeks."],
+ ["Warfarin","Rifampicin","major","Potent enzyme induction lowers warfarin levels, with loss of anticoagulation.","Avoid; if used, large dose increase with close INR monitoring, including after rifampicin is stopped."],
+ ["Warfarin","Carbamazepine","major","Enzyme induction reduces the anticoagulant effect.","Monitor INR and adjust dose when starting or stopping carbamazepine."],
+ ["Warfarin","Ciprofloxacin","moderate","Raised INR reported (CYP1A2 inhibition of R-warfarin, effects on gut flora).","Monitor INR during and shortly after the course."],
+ ["Warfarin","Paracetamol","minor","Regular doses above 2 g/day for several days may raise INR.","Occasional use is acceptable; monitor INR with regular use."],
+ ["Warfarin","St John's Wort","major","Enzyme induction lowers warfarin levels.","Avoid the combination."],
+ ["Simvastatin","Clarithromycin","contraindicated","Strong CYP3A4 inhibition causes a large rise in simvastatin exposure: myopathy / rhabdomyolysis.","Contraindicated. Suspend simvastatin during the course or use azithromycin."],
+ ["Simvastatin","Ketoconazole","contraindicated","Strong CYP3A4 inhibition causes a large rise in simvastatin exposure: rhabdomyolysis.","Contraindicated. Use an alternative antifungal or suspend the statin."],
+ ["Simvastatin","Itraconazole","contraindicated","Strong CYP3A4 inhibition causes a large rise in simvastatin exposure: rhabdomyolysis.","Contraindicated. Suspend simvastatin during and for some days after itraconazole."],
+ ["Simvastatin","Ritonavir","contraindicated","Strong CYP3A4 inhibition causes a large rise in simvastatin exposure: rhabdomyolysis.","Contraindicated. Consider low-dose rosuvastatin or pravastatin."],
+ ["Simvastatin","Cyclosporine","contraindicated","CYP3A4 and OATP1B1 inhibition raise statin levels: rhabdomyolysis.","Contraindicated."],
+ ["Simvastatin","Amiodarone","major","Raised simvastatin exposure; myopathy risk.","Do not exceed simvastatin 20 mg/day."],
+ ["Simvastatin","Verapamil","major","CYP3A4 inhibition raises simvastatin exposure; myopathy risk.","Do not exceed simvastatin 10 mg/day."],
+ ["Simvastatin","Diltiazem","major","CYP3A4 inhibition raises simvastatin exposure; myopathy risk.","Do not exceed simvastatin 10 mg/day."],
+ ["Simvastatin","Amlodipine","moderate","Modest rise in simvastatin exposure.","Do not exceed simvastatin 20 mg/day."],
+ ["Simvastatin","Grapefruit juice","major","Intestinal CYP3A4 inhibition raises simvastatin levels; myopathy.","Avoid grapefruit juice."],
+ ["Atorvastatin","Clarithromycin","major","Raised atorvastatin exposure; myopathy risk.","Limit atorvastatin to 20 mg/day or suspend during the course."],
+ ["Colchicine","Clarithromycin","major","CYP3A4 + P-gp inhibition causes colchicine toxicity (fatalities reported).","Avoid, especially in renal/hepatic impairment; otherwise reduce the colchicine dose."],
+ ["Clopidogrel","Omeprazole","major","CYP2C19 inhibition reduces conversion of clopidogrel to its active metabolite, so the antiplatelet effect falls.","Avoid omeprazole/esomeprazole; use pantoprazole if a PPI is needed."],
+ ["Clopidogrel","Pantoprazole","minor","Weak CYP2C19 effect; no clinically relevant loss of antiplatelet action expected.","Preferred PPI with clopidogrel."],
+ ["Clopidogrel","Aspirin","moderate","Intended dual antiplatelet therapy (DAPT), but bleeding risk increases.","Use per indication and duration; consider pantoprazole for GI protection."],
+ ["Aspirin","Ibuprofen","moderate","Ibuprofen can block aspirin's irreversible COX-1 antiplatelet effect; GI bleeding risk rises.","Give ibuprofen ≥30 min after or ≥8 h before immediate-release aspirin; avoid regular use."],
+ ["Sildenafil","Nitroglycerin","contraindicated","Additive cGMP-mediated vasodilation causes severe hypotension.","Contraindicated. No nitrate within 24 h of sildenafil."],
+ ["Sildenafil","Isosorbide mononitrate","contraindicated","Additive cGMP-mediated vasodilation causes severe hypotension.","Contraindicated."],
+ ["Tizanidine","Ciprofloxacin","contraindicated","CYP1A2 inhibition raises tizanidine exposure about 10-fold: severe hypotension and sedation.","Contraindicated."],
+ ["Theophylline","Ciprofloxacin","major","CYP1A2 inhibition raises theophylline levels: seizures, arrhythmias.","Avoid, or reduce the theophylline dose and monitor levels."],
+ ["Digoxin","Amiodarone","major","P-gp inhibition raises digoxin levels (roughly double).","Reduce digoxin dose by ~50% and monitor levels and heart rate."],
+ ["Digoxin","Verapamil","major","P-gp inhibition raises digoxin levels, plus additive AV-node block.","Reduce digoxin dose; monitor levels and ECG."],
+ ["Digoxin","Clarithromycin","major","P-gp inhibition causes digoxin toxicity.","Prefer azithromycin; otherwise monitor digoxin levels."],
+ ["Digoxin","Furosemide","moderate","Diuretic-induced hypokalaemia or hypomagnesaemia increases digoxin toxicity.","Monitor K⁺ and Mg²⁺; supplement as required."],
+ ["Methotrexate","Co-trimoxazole","major","Additive antifolate effect plus reduced renal clearance: bone-marrow suppression.","Avoid the combination."],
+ ["Methotrexate","Ibuprofen","major","NSAIDs reduce renal methotrexate clearance, causing toxicity (especially with high-dose MTX).","Avoid with high-dose MTX; with low-dose weekly MTX monitor FBC and renal function."],
+ ["Methotrexate","Naproxen","major","NSAIDs reduce renal methotrexate clearance, causing toxicity.","Avoid with high-dose MTX; with low-dose weekly MTX monitor FBC and renal function."],
+ ["Lithium","Ibuprofen","major","NSAIDs reduce renal lithium clearance, raising lithium levels (toxicity).","Avoid regular NSAIDs; if needed, monitor lithium levels closely."],
+ ["Lithium","Lisinopril","major","ACE inhibitors reduce lithium excretion: toxicity.","Avoid, or monitor lithium levels closely."],
+ ["Lithium","Hydrochlorothiazide","major","Thiazides reduce lithium clearance by about 25–40%.","Avoid, or reduce the lithium dose with close monitoring."],
+ ["Spironolactone","Lisinopril","major","Additive potassium retention: hyperkalaemia.","Monitor K⁺ and renal function, particularly in CKD and the elderly."],
+ ["Spironolactone","Potassium chloride","major","Severe hyperkalaemia risk.","Avoid potassium supplements unless hypokalaemic and closely monitored."],
+ ["Linezolid","Sertraline","major","MAO inhibition plus SSRI: serotonin syndrome.","Avoid; if essential, monitor closely for serotonin toxicity."],
+ ["Linezolid","Fluoxetine","major","MAO inhibition plus SSRI: serotonin syndrome.","Avoid; fluoxetine has a long washout (about 5 weeks)."],
+ ["Linezolid","Tramadol","major","MAO inhibition plus serotonergic opioid: serotonin syndrome, seizures.","Avoid the combination."],
+ ["Tramadol","Fluoxetine","major","Serotonin syndrome risk; CYP2D6 inhibition also reduces tramadol activation and seizure threshold falls.","Avoid; choose a non-serotonergic analgesic."],
+ ["Tramadol","Paroxetine","major","Serotonin syndrome risk; CYP2D6 inhibition also reduces tramadol activation and seizure threshold falls.","Avoid; choose a non-serotonergic analgesic."],
+ ["Codeine","Fluoxetine","moderate","CYP2D6 inhibition blocks conversion of codeine to morphine, reducing analgesia.","Use an analgesic that does not depend on CYP2D6."],
+ ["Codeine","Paroxetine","moderate","CYP2D6 inhibition blocks conversion of codeine to morphine, reducing analgesia.","Use an analgesic that does not depend on CYP2D6."],
+ ["Oxycodone","Alprazolam","major","Opioid + benzodiazepine: profound sedation, respiratory depression, death (FDA boxed warning).","Avoid; if unavoidable, use the lowest doses for the shortest time with monitoring."],
+ ["Morphine","Diazepam","major","Opioid + benzodiazepine: profound sedation, respiratory depression (FDA boxed warning).","Avoid; if unavoidable, use the lowest doses for the shortest time with monitoring."],
+ ["Metronidazole","Alcohol (ethanol)","major","Disulfiram-like reaction (flushing, vomiting, tachycardia).","Avoid alcohol during therapy and for 48 h afterwards."],
+ ["Paracetamol","Alcohol (ethanol)","moderate","Chronic alcohol use increases the risk of paracetamol hepatotoxicity.","Limit the paracetamol dose in regular drinkers."],
+ ["Ciprofloxacin","Calcium carbonate","moderate","Chelation reduces ciprofloxacin absorption.","Take ciprofloxacin 2 h before or 6 h after calcium."],
+ ["Levothyroxine","Calcium carbonate","moderate","Binding in the gut reduces levothyroxine absorption.","Separate doses by at least 4 h."],
+ ["Azathioprine","Allopurinol","major","Xanthine-oxidase inhibition causes 6-mercaptopurine to accumulate: myelosuppression.","Avoid, or reduce azathioprine to 25% of the dose with FBC monitoring."],
+ ["Apixaban","Rifampicin","major","Combined CYP3A4/P-gp induction lowers apixaban levels: thrombosis/stroke risk.","Avoid the combination."],
+ ["Rivaroxaban","Rifampicin","major","Combined CYP3A4/P-gp induction lowers rivaroxaban levels: thrombosis risk.","Avoid the combination."],
+ ["Apixaban","Ketoconazole","major","Combined strong CYP3A4 + P-gp inhibition raises apixaban levels: bleeding.","Avoid."],
+ ["Rivaroxaban","Ketoconazole","major","Combined strong CYP3A4 + P-gp inhibition raises rivaroxaban levels: bleeding.","Avoid."],
+ ["Dabigatran","Ketoconazole","major","P-gp inhibition raises dabigatran exposure: bleeding.","Avoid."],
+ ["Cyclosporine","St John's Wort","major","Enzyme/P-gp induction lowers cyclosporine levels: transplant rejection.","Avoid."],
+ ["Sertraline","St John's Wort","major","Additive serotonergic effect: serotonin syndrome.","Avoid."],
+ ["Tacrolimus","Clarithromycin","major","CYP3A4 inhibition raises tacrolimus levels: nephrotoxicity, QT prolongation.","Avoid, or reduce the dose with trough-level monitoring."],
+ ["Verapamil","Metoprolol","major","Additive negative chronotropy and inotropy: bradycardia, AV block, heart failure.","Avoid IV combination; oral use only with ECG monitoring."],
+ ["Phenytoin","Fluconazole","major","CYP2C9/2C19 inhibition raises phenytoin levels: toxicity (nystagmus, ataxia).","Monitor phenytoin levels; reduce the dose."],
+ ["Carbamazepine","Clarithromycin","major","CYP3A4 inhibition raises carbamazepine levels: toxicity.","Avoid, or monitor levels."],
+ ["Carbamazepine","Erythromycin","major","CYP3A4 inhibition raises carbamazepine levels: toxicity.","Avoid, or monitor levels."],
+ ["Quetiapine","Ketoconazole","major","Strong CYP3A4 inhibition raises quetiapine exposure about 6-fold.","Reduce the quetiapine dose to one-sixth."],
+ ["Glimepiride","Fluconazole","moderate","CYP2C9 inhibition raises sulfonylurea levels: hypoglycaemia.","Monitor blood glucose."],
+ ["Insulin","Metoprolol","moderate","Beta-blockers mask hypoglycaemia warning signs (tremor, tachycardia).","Educate the patient and monitor glucose; prefer cardioselective agents."],
+ ["Prednisolone","Ibuprofen","moderate","Increased risk of GI ulceration and bleeding.","Consider PPI gastroprotection."],
+ ["Fentanyl","Ritonavir","major","Strong CYP3A4 inhibition raises fentanyl levels: respiratory depression.","Avoid, or reduce the dose with close monitoring."],
+ ["Citalopram","Omeprazole","moderate","CYP2C19 inhibition raises citalopram levels: QT prolongation.","Maximum citalopram dose 20 mg/day."]
+];
+/* Curated pairs with NO clinically significant interaction (true negatives for ML) */
+const SAFE_RAW = [
+ ["Paracetamol","Amlodipine"],["Metformin","Atorvastatin"],["Rosuvastatin","Pantoprazole"],["Cetirizine","Metformin"],
+ ["Paracetamol","Metformin"],["Levothyroxine","Metformin"],["Paracetamol","Omeprazole"],["Atenolol","Metformin"],
+ ["Losartan","Rosuvastatin"],["Pantoprazole","Amlodipine"],["Cetirizine","Paracetamol"],["Azithromycin","Paracetamol"],
+ ["Rosuvastatin","Metformin"],["Levothyroxine","Atorvastatin"],["Amlodipine","Metformin"],["Pantoprazole","Metformin"],
+ ["Cetirizine","Amlodipine"],["Paracetamol","Losartan"],["Atenolol","Rosuvastatin"],["Paracetamol","Levothyroxine"]
+];
+const PRESETS = {
+ "Elderly cardiac":["Warfarin","Amiodarone","Digoxin","Furosemide","Simvastatin","Aspirin"],
+ "Depression + pain":["Fluoxetine","Tramadol","Alprazolam","Ibuprofen","Oxycodone"],
+ "Transplant + infection":["Tacrolimus","Clarithromycin","Prednisolone","Omeprazole","Co-trimoxazole"],
+ "Diabetes + hypertension":["Metformin","Glimepiride","Lisinopril","Spironolactone","Atorvastatin","Metoprolol"],
+ "Psychiatry":["Lithium","Quetiapine","Citalopram","Hydrochlorothiazide","Ondansetron"],
+ "Cardiology + ED":["Sildenafil","Isosorbide mononitrate","Clopidogrel","Omeprazole","Amlodipine"],
+ "Low-risk check":["Paracetamol","Metformin","Amlodipine","Rosuvastatin"]
+};
+const RULES = [
+ ["R1","CYP450 inhibition","Inhibitor × substrate of the same CYP isoenzyme raises the substrate's plasma levels. Severity is graded by inhibitor strength and by whether the substrate has a narrow therapeutic index or is a sensitive substrate."],
+ ["R2","Prodrug activation blocked","An inhibitor of the CYP that activates a prodrug (clopidogrel–2C19, codeine/tramadol–2D6) reduces efficacy."],
+ ["R3","CYP450 induction","Inducer × substrate lowers the substrate's levels and risks therapeutic failure (major if NTI or anticoagulant)."],
+ ["R4","P-glycoprotein","P-gp inhibitor or inducer × P-gp substrate (digoxin, DOACs, colchicine, cyclosporine)."],
+ ["R5","QT prolongation","Two QT-prolonging drugs: additive risk of torsades de pointes."],
+ ["R6","Serotonin syndrome","Two serotonergic drugs (major if one is an MAOI)."],
+ ["R7","Bleeding","Anticoagulant / antiplatelet / NSAID / SSRI combinations (major if an anticoagulant is involved)."],
+ ["R8","CNS / respiratory depression","Two CNS depressants (major for opioid + benzodiazepine or alcohol)."],
+ ["R9","Hyperkalaemia","Two potassium-raising drugs (ACEi, ARB, K⁺-sparing diuretic, KCl, trimethoprim, CNIs)."],
+ ["R10","Additive organ toxicity / PD","Nephrotoxicity, hypotension, hypoglycaemia, bradycardia, anticholinergic burden."],
+ ["R11","Therapeutic duplication","Two drugs from the same pharmacological class."],
+ ["R12","Electrolyte-mediated","K⁺-wasting diuretic/steroid × digoxin or QT-prolonging drug."],
+ ["R13","Renal lithium clearance","NSAID / ACEi / ARB / thiazide × lithium."],
+ ["R14","Absorption (chelation)","Polyvalent cation × fluoroquinolone or levothyroxine."],
+ ["R15","Specific mechanisms","Nitrate + PDE5i, disulfiram-like reaction, XO inhibitor + thiopurine, dual antifolates, steroid + NSAID, beta-blocker masking hypoglycaemia."]
+];
+
+/* ============================================================
+   2. DATA STRUCTURES
+   ============================================================ */
+const SEVS=["none","minor","moderate","major","contraindicated"];
+const SEVLABEL=["No interaction","Minor","Moderate","Major","Contraindicated"];
+const DRUGS=new Map();
+const KB=new Map();          // curated
+const IMPORTED=new Map();    // pairKey -> [records]
+const SAFE=new Set();
+const pk=(a,b)=>[a,b].sort().join("|");
+const idOf=n=>n.trim().toLowerCase();
+function addDrug(name,cls,o={},imported=false){
+  const d={id:idOf(name),name,cls,sub:o.sub||[],inh:o.inh||{},ind:o.ind||[],prodrug:o.prodrug||null,f:new Set(o.f||[]),imported};
+  DRUGS.set(d.id,d);return d;
+}
+DRUGS_RAW.forEach(([n,c,o])=>addDrug(n,c,o));
+KB_RAW.forEach(([a,b,s,e,m])=>{
+  if(!DRUGS.has(idOf(a))||!DRUGS.has(idOf(b))) console.warn("KB drug missing",a,b);
+  KB.set(pk(idOf(a),idOf(b)),{sev:SEVS.indexOf(s),effect:e,mgmt:m});
+});
+SAFE_RAW.forEach(([a,b])=>SAFE.add(pk(idOf(a),idOf(b))));
+
+/* ============================================================
+   3. RULE ENGINE
+   ============================================================ */
+const BLEED=["anticoag","antiplatelet","nsaid","ssri"];
+const inBleed=d=>BLEED.some(f=>d.f.has(f));
+const onlySsri=d=>d.f.has("ssri")&&!["anticoag","antiplatelet","nsaid"].some(f=>d.f.has(f));
+function ruleEngine(a,b){
+  const out=[];const add=(sev,rule,title,mech)=>out.push({sev,rule,title,mech});
+  if(a.imported||b.imported) return out;
+  for(const [x,y] of [[a,b],[b,a]]){
+    for(const [cyp,lvl] of Object.entries(x.inh)){
+      if(y.prodrug===cyp) add(lvl==="strong"?3:2,"R2",`Reduced prodrug activation (CYP${cyp})`,`${x.name} is a ${lvl} CYP${cyp} inhibitor; ${y.name} is a prodrug activated by CYP${cyp}, so less active metabolite forms and the therapeutic effect may fall.`);
+      if(y.sub.includes(cyp)){
+        const nti=y.f.has("nti"),sen=y.f.has("sensitive");const crit=nti||sen;
+        const sev=lvl==="strong"?(crit?3:2):(crit?2:1);
+        add(sev,"R1",`Metabolic inhibition (CYP${cyp})`,`${x.name} is a ${lvl} CYP${cyp} inhibitor and ${y.name} is a CYP${cyp} substrate${nti?" with a narrow therapeutic index":sen?" (sensitive substrate)":""}, so ${y.name} plasma levels and toxicity risk may rise.`);
+      }
+    }
+    const indC=x.ind.filter(c=>y.sub.includes(c));
+    if(indC.length){const crit=y.f.has("nti")||y.f.has("anticoag")||y.f.has("sensitive");
+      add(crit?3:2,"R3",`Enzyme induction (CYP${indC.join("/")})`,`${x.name} induces CYP${indC.join(", CYP")}, which metabolise${indC.length>1?"":"s"} ${y.name}. ${y.name} levels may fall, risking therapeutic failure.`);}
+    if(x.f.has("pgpI")&&y.f.has("pgpS")){const c=y.f.has("nti")||y.f.has("anticoag");add(c?3:2,"R4","P-glycoprotein inhibition",`${x.name} inhibits P-gp efflux; ${y.name} is a P-gp substrate${c?" with a narrow margin":""}. Absorption rises and clearance falls, so ${y.name} exposure increases.`);}
+    if(x.f.has("pgpInd")&&y.f.has("pgpS")){const c=y.f.has("nti")||y.f.has("anticoag");add(c?3:2,"R4","P-glycoprotein induction",`${x.name} induces P-gp; ${y.name} is a P-gp substrate, so its exposure and effect fall.`);}
+    if(x.f.has("chelator")&&y.f.has("chelatable")) add(2,"R14","Reduced absorption (chelation / binding)",`${x.name} binds ${y.name} in the GI tract, reducing its bioavailability. Separate the doses.`);
+    if(x.f.has("lithiumRaise")&&y.f.has("lithium")) add(3,"R13","Reduced renal lithium clearance",`${x.name} reduces renal lithium excretion, raising lithium levels (narrow therapeutic index) with a risk of toxicity.`);
+    if((x.f.has("kDown"))&&y.f.has("glycoside")) add(2,"R12","Hypokalaemia potentiates digoxin",`${x.name} can lower K⁺/Mg²⁺, which increases myocardial sensitivity to ${y.name}.`);
+    if(x.f.has("kDown")&&y.f.has("qt")&&!y.f.has("glycoside")) add(2,"R12","Hypokalaemia + QT-prolonging drug",`${x.name}-induced hypokalaemia adds to the QT prolongation from ${y.name} (torsades risk).`);
+    if(x.f.has("disulfiram")&&y.f.has("alcohol")) add(3,"R15","Disulfiram-like reaction",`${x.name} inhibits aldehyde dehydrogenase, so acetaldehyde accumulates: flushing, vomiting, tachycardia.`);
+    if(x.f.has("xoi")&&y.f.has("thiopurine")) add(3,"R15","Thiopurine accumulation",`${x.name} blocks xanthine oxidase, which inactivates 6-mercaptopurine from ${y.name}. The result is myelosuppression.`);
+    if(x.f.has("nitrate")&&y.f.has("pde5")) add(4,"R15","Nitrate + PDE5 inhibitor",`Additive NO/cGMP-mediated vasodilation causes severe, potentially fatal hypotension.`);
+    if(x.f.has("steroid")&&y.f.has("nsaid")) add(2,"R15","GI ulceration / bleeding",`Corticosteroid plus NSAID increases peptic ulcer and GI bleeding risk.`);
+    if(x.f.has("betablocker")&&y.f.has("hypoG")) add(2,"R15","Masked hypoglycaemia",`${x.name} can mask adrenergic warning signs of hypoglycaemia caused by ${y.name} and delay recovery.`);
+  }
+  const both=f=>a.f.has(f)&&b.f.has(f), either=f=>a.f.has(f)||b.f.has(f);
+  if(both("qt")) add(3,"R5","Additive QT prolongation",`Both ${a.name} and ${b.name} prolong the QT interval, raising the risk of torsades de pointes. Avoid, or monitor ECG and electrolytes.`);
+  if(both("sero")) add(either("maoi")?3:2,"R6","Serotonin syndrome risk",`Both drugs increase serotonergic activity${either("maoi")?" (one is an MAO inhibitor)":""}. Watch for agitation, hyperthermia, clonus and tremor.`);
+  if(inBleed(a)&&inBleed(b)&&!(onlySsri(a)&&onlySsri(b))) add(either("anticoag")?3:2,"R7","Additive bleeding risk",`Both drugs impair haemostasis (${[a,b].map(d=>BLEED.filter(f=>d.f.has(f)).join("/")).join(" + ")}), increasing GI and other bleeding.`);
+  if(both("cns")){const ob=(a.f.has("opioid")&&b.f.has("benzo"))||(b.f.has("opioid")&&a.f.has("benzo"));const al=either("alcohol")&&(either("opioid")||either("benzo"));
+    add(ob||al?3:2,"R8","Additive CNS / respiratory depression",ob?"Opioid + benzodiazepine causes profound sedation and respiratory depression (FDA boxed warning).":al?"Alcohol potentiates opioid/benzodiazepine sedation and respiratory depression.":"Both drugs depress the CNS: drowsiness, psychomotor impairment, falls.");}
+  else if((a.f.has("cnsMild")&&b.f.has("cns"))||(b.f.has("cnsMild")&&a.f.has("cns"))) add(1,"R8","Mild additive sedation","Minor additive drowsiness; caution with driving.");
+  if(both("kUp")) add(3,"R9","Hyperkalaemia","Both drugs raise serum potassium: risk of arrhythmia. Monitor K⁺ and renal function.");
+  if(both("nephro")) add(2,"R10","Additive nephrotoxicity","Both drugs can impair renal function. Monitor creatinine and hydration.");
+  if(both("hypoT")&&!(either("nitrate")&&either("pde5"))) add(1,"R10","Additive hypotension","Additive blood-pressure lowering: dizziness, orthostatic hypotension (often intended; monitor).");
+  if(both("hypoG")) add(2,"R10","Additive hypoglycaemia","Both drugs lower blood glucose. Monitor glucose and adjust doses.");
+  if(both("brady")) add(2,"R10","Additive bradycardia / AV block","Both slow heart rate or AV conduction. Monitor HR and ECG.");
+  if(both("antichol")) add(2,"R10","Anticholinergic burden","Additive anticholinergic effects: confusion, constipation, urinary retention (especially in the elderly).");
+  if(both("antifolate")) add(3,"R15","Additive antifolate toxicity","Combined antifolate action: megaloblastic anaemia, pancytopenia.");
+  if(both("myopathy")||(a.cls===b.cls)) add(2,"R11","Therapeutic duplication",`${a.name} and ${b.name} belong to the same class (${a.cls}): duplicate therapy, additive adverse effects.`);
+  // de-duplicate identical titles, keep highest
+  const m=new Map();out.forEach(r=>{const k=r.title;if(!m.has(k)||m.get(k).sev<r.sev)m.set(k,r)});
+  return [...m.values()].sort((p,q)=>q.sev-p.sev);
+}
+
+/* ============================================================
+   4. ML — feature engineering + logistic regression
+   ============================================================ */
+const FEAT_NAMES=[
+ "Strong CYP inhibitor × substrate","Moderate CYP inhibitor × substrate","CYP inducer × substrate","Inhibitor of prodrug-activating CYP",
+ "P-gp inhibitor × P-gp substrate","P-gp inducer × P-gp substrate","Both QT-prolonging","Both serotonergic","MAOI involved + serotonergic",
+ "Bleeding combo with anticoagulant","Bleeding combo (no anticoagulant)","Both CNS depressants","Opioid + benzodiazepine",
+ "Both raise K⁺","Both nephrotoxic","Both hypotensive","Both hypoglycaemic","Both bradycardic",
+ "Narrow therapeutic index involved","Sensitive CYP substrate involved","K⁺-wasting × digoxin/QT drug","Lithium clearance reducer × lithium",
+ "Same pharmacological class","Profile similarity (Jaccard)",
+ "Rule engine: max severity (stacked)","Rule engine: number of findings"
+];
+const profileSet=d=>{const s=new Set([...d.f].map(x=>"f:"+x));d.sub.forEach(c=>s.add("s:"+c));Object.keys(d.inh).forEach(c=>s.add("i:"+c));d.ind.forEach(c=>s.add("d:"+c));return s};
+function features(a,b){
+  const inhSub=(x,y,l)=>Object.entries(x.inh).some(([c,v])=>v===l&&y.sub.includes(c));
+  const dir=fn=>fn(a,b)||fn(b,a)?1:0;
+  const both=f=>a.f.has(f)&&b.f.has(f)?1:0, either=f=>a.f.has(f)||b.f.has(f)?1:0;
+  const bleedPair=inBleed(a)&&inBleed(b)&&!(onlySsri(a)&&onlySsri(b));
+  const sa=profileSet(a),sb=profileSet(b);let inter=0;sa.forEach(x=>{if(sb.has(x))inter++});const uni=sa.size+sb.size-inter;
+  return [
+    dir((x,y)=>inhSub(x,y,"strong")),
+    dir((x,y)=>inhSub(x,y,"moderate")),
+    dir((x,y)=>x.ind.some(c=>y.sub.includes(c))),
+    dir((x,y)=>y.prodrug&&x.inh[y.prodrug]),
+    dir((x,y)=>x.f.has("pgpI")&&y.f.has("pgpS")),
+    dir((x,y)=>x.f.has("pgpInd")&&y.f.has("pgpS")),
+    both("qt"),both("sero"),(either("maoi")&&both("sero"))?1:0,
+    bleedPair&&either("anticoag")?1:0, bleedPair&&!either("anticoag")?1:0,
+    both("cns"), dir((x,y)=>x.f.has("opioid")&&y.f.has("benzo")),
+    both("kUp"),both("nephro"),both("hypoT"),both("hypoG"),both("brady"),
+    either("nti"),either("sensitive"),
+    dir((x,y)=>x.f.has("kDown")&&(y.f.has("glycoside")||y.f.has("qt"))),
+    dir((x,y)=>x.f.has("lithiumRaise")&&y.f.has("lithium")),
+    a.cls===b.cls?1:0,
+    uni?inter/uni:0,
+    ...(()=>{const r=ruleEngine(a,b);return [r.length?r[0].sev/4:0,Math.min(r.length,4)/4]})()
+  ];
+}
+function mulberry32(s){return function(){s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const sig=z=>1/(1+Math.exp(-z));
+function trainLR(X,y,{epochs=900,lr=0.8,l2=0.004}={}){
+  const n=X.length,d=X[0].length;const w=new Array(d).fill(0);let b=0;
+  const pos=y.reduce((s,v)=>s+v,0),neg=n-pos;const c1=n/(2*pos),c0=n/(2*neg);
+  for(let e=0;e<epochs;e++){
+    const g=new Array(d).fill(0);let gb=0;
+    for(let i=0;i<n;i++){let z=b;const xi=X[i];for(let j=0;j<d;j++)z+=w[j]*xi[j];
+      const err=(sig(z)-y[i])*(y[i]?c1:c0);for(let j=0;j<d;j++)g[j]+=err*xi[j];gb+=err;}
+    for(let j=0;j<d;j++)w[j]-=lr*(g[j]/n+l2*w[j]);b-=lr*gb/n;
+  }
+  return {w,b};
+}
+const predict=(m,x)=>{let z=m.b;for(let j=0;j<x.length;j++)z+=m.w[j]*x[j];return sig(z)};
+function auc(scores,labels){
+  const idx=scores.map((s,i)=>i).sort((i,j)=>scores[i]-scores[j]);
+  let rank=0,sumPos=0,nPos=0,nNeg=0,i=0;
+  while(i<idx.length){let j=i;while(j+1<idx.length&&scores[idx[j+1]]===scores[idx[i]])j++;
+    const r=(i+j)/2+1;for(let k=i;k<=j;k++){if(labels[idx[k]]){sumPos+=r;nPos++}else nNeg++}i=j+1;}
+  return nPos&&nNeg?(sumPos-nPos*(nPos+1)/2)/(nPos*nNeg):NaN;
+}
+function rocPoints(scores,labels){
+  const P=labels.filter(v=>v).length,N=labels.length-P;const ths=[...new Set(scores)].sort((a,b)=>b-a);
+  const pts=[[0,0]];ths.forEach(t=>{let tp=0,fp=0;scores.forEach((s,i)=>{if(s>=t){labels[i]?tp++:fp++}});pts.push([fp/N,tp/P])});pts.push([1,1]);return pts;
+}
+function ruleScore(a,b){const r=ruleEngine(a,b);return r.length?r[0].sev/4+r.length*0.01:0}
+
+let MODEL=null,MSTATS=null,SEED=20261106;const ML_FLAG=0.7;
+function buildDataset(seed){
+  const rnd=mulberry32(seed);const prof=[...DRUGS.values()].filter(d=>!d.imported);
+  const pos=[],safe=[],minor=new Set();
+  KB.forEach((v,k)=>{const [a,b]=k.split("|");if(v.sev>=2)pos.push([a,b,"kb"]);else minor.add(k)});
+  IMPORTED.forEach((recs,k)=>{const [a,b]=k.split("|");const da=DRUGS.get(a),db=DRUGS.get(b);
+    if(da&&db&&!da.imported&&!db.imported&&!KB.has(k)&&Math.max(...recs.map(r=>r.sev))>=2)pos.push([a,b,"imp"])});
+  SAFE.forEach(k=>{const [a,b]=k.split("|");safe.push([a,b,"safe"])});
+  const posKeys=new Set(pos.map(p=>pk(p[0],p[1])));
+  const all=[];for(let i=0;i<prof.length;i++)for(let j=i+1;j<prof.length;j++){const k=pk(prof[i].id,prof[j].id);if(!posKeys.has(k)&&!SAFE.has(k)&&!minor.has(k)&&!IMPORTED.has(k))all.push([prof[i].id,prof[j].id,"unl"])}
+  for(let i=all.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[all[i],all[j]]=[all[j],all[i]]}
+  const unl=all.slice(0,Math.max(0,pos.length*4-safe.length));
+  const rows=[...pos.map(p=>({a:p[0],b:p[1],y:1,src:p[2]})),...safe.map(p=>({a:p[0],b:p[1],y:0,src:"safe"})),...unl.map(p=>({a:p[0],b:p[1],y:0,src:"unl"}))];
+  rows.forEach(r=>r.x=features(DRUGS.get(r.a),DRUGS.get(r.b)));
+  // shuffle + stratified split
+  for(let i=rows.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[rows[i],rows[j]]=[rows[j],rows[i]]}
+  return {rows,nPos:pos.length,nSafe:safe.length,nUnl:unl.length,nImp:pos.filter(p=>p[2]==="imp").length};
+}
+function trainAll(seed=SEED){
+  const t0=performance.now();const ds=buildDataset(seed);const rows=ds.rows;
+  const P=rows.filter(r=>r.y),N=rows.filter(r=>!r.y);
+  const cut=(arr,f)=>Math.round(arr.length*f);
+  const test=[...P.slice(0,cut(P,.2)),...N.slice(0,cut(N,.2))],train=[...P.slice(cut(P,.2)),...N.slice(cut(N,.2))];
+  const m=trainLR(train.map(r=>r.x),train.map(r=>r.y));
+  const sc=test.map(r=>predict(m,r.x)),lb=test.map(r=>r.y);
+  let tp=0,fp=0,tn=0,fn=0;sc.forEach((s,i)=>{const p=s>=.5;if(p&&lb[i])tp++;else if(p)fp++;else if(lb[i])fn++;else tn++});
+  const rs=test.map(r=>ruleScore(DRUGS.get(r.a),DRUGS.get(r.b)));
+  // 5-fold CV
+  const K=5,cv=[];for(let k=0;k<K;k++){const tr=[],te=[];[P,N].forEach(arr=>arr.forEach((r,i)=>(i%K===k?te:tr).push(r)));
+    const mk=trainLR(tr.map(r=>r.x),tr.map(r=>r.y),{epochs:600});cv.push(auc(te.map(r=>predict(mk,r.x)),te.map(r=>r.y)))}
+  MODEL=trainLR(rows.map(r=>r.x),rows.map(r=>r.y));
+  const prec=tp/(tp+fp||1),rec=tp/(tp+fn||1);
+  MSTATS={ds,test:test.length,train:train.length,auc:auc(sc,lb),ruleAuc:auc(rs,lb),roc:rocPoints(sc,lb),ruleRoc:rocPoints(rs,lb),
+    acc:(tp+tn)/test.length,prec,rec,f1:2*prec*rec/(prec+rec||1),cm:{tp,fp,tn,fn},cvMean:cv.reduce((s,v)=>s+v,0)/K,cvSd:Math.sqrt(cv.reduce((s,v)=>s+(v-cv.reduce((a,b)=>a+b,0)/K)**2,0)/K),ms:performance.now()-t0,seed};
+  return MSTATS;
+}
+
+
+/* ============================================================
+   5a. PATIENT CONTEXT & REGIMEN-LEVEL BURDEN
+   ============================================================ */
+const PC={elderly:false,renal:false,hepatic:false};
+function contextAdjust(a,b,baseSev){
+  const notes=[];let bump=0;
+  const ef=f=>a.f.has(f)||b.f.has(f), bo=f=>a.f.has(f)&&b.f.has(f);
+  const raise=t=>{notes.push(t);bump=1};
+  if(PC.renal){
+    if(bo("kUp")) raise("Renal impairment: potassium excretion is already reduced, so additive hyperkalaemia is considerably more dangerous here.");
+    if(ef("nephro")) raise("Renal impairment: a nephrotoxic agent acting on an already impaired kidney carries a higher risk of further decline.");
+    if(ef("lithium")||ef("glycoside")||ef("nti")) raise("Renal impairment: renally cleared narrow-therapeutic-index drugs accumulate, so levels need closer monitoring.");
+  }
+  if(PC.hepatic&&(ef("nti")||ef("sensitive"))) raise("Hepatic impairment: metabolic clearance is already reduced, which compounds any inhibition of this pathway.");
+  if(PC.elderly){
+    if(bo("cns")) raise("Age 65+: additive sedation raises the risk of falls, delirium and fracture.");
+    if(bo("antichol")) raise("Age 65+: anticholinergic burden is associated with confusion, urinary retention and falls.");
+    if(bo("hypoT")) raise("Age 65+: orthostatic hypotension is poorly tolerated and is a common cause of falls.");
+    if(ef("anticoag")&&(ef("nsaid")||ef("antiplatelet"))) raise("Age 65+: gastrointestinal bleeding risk on combined antithrombotic therapy rises with age.");
+  }
+  // Context raises concern but never confers a contraindication: that is a
+  // labelling status, not something a patient risk factor can create. Cap at major.
+  const out=baseSev>0?Math.max(baseSev,Math.min(3,baseSev+bump)):baseSev;
+  return {notes,sev:out,bumped:out>baseSev};
+}
+const BURDENS=[
+ {k:"qt",label:"QT prolongation",test:d=>d.f.has("qt"),note:"Each additional QT-prolonging drug adds to the total repolarisation delay. Check an ECG and correct potassium and magnesium before adding another."},
+ {k:"bleed",label:"Bleeding risk",test:d=>inBleed(d),note:"Anticoagulant, antiplatelet, NSAID and SSRI effects are cumulative across the whole regimen, not only within one pair."},
+ {k:"cns",label:"CNS depression",test:d=>d.f.has("cns"),note:"Sedative load accumulates across every agent. Consider total burden when assessing falls, driving and respiratory risk."},
+ {k:"sero",label:"Serotonergic load",test:d=>d.f.has("sero"),note:"Three or more serotonergic agents raise the risk of serotonin syndrome well beyond any single pair."},
+ {k:"antichol",label:"Anticholinergic burden",test:d=>d.f.has("antichol"),note:"Anticholinergic burden scales are built on counts like this one, and correlate with confusion and falls in older adults."},
+ {k:"kUp",label:"Potassium retention",test:d=>d.f.has("kUp"),note:"Several potassium-raising agents together can push serum potassium up faster than any pair would suggest."},
+ {k:"nephro",label:"Nephrotoxic load",test:d=>d.f.has("nephro"),note:"The classic triple whammy (ACEi or ARB, diuretic and NSAID) is a count-based risk, not a pairwise one."},
+ {k:"nti",label:"Narrow therapeutic index",test:d=>d.f.has("nti"),note:"Several narrow-index drugs in one regimen leave little room for any perturbation of clearance."}
+];
+function burdens(ds){
+  return BURDENS.map(b=>({...b,hits:ds.filter(b.test)})).filter(b=>b.hits.length>=2)
+    .sort((x,y)=>y.hits.length-x.hits.length);
+}
+/* ============================================================
+   5. PAIR ANALYSIS
+   ============================================================ */
+function analyse(a,b){
+  const k=pk(a.id,b.id);const kb=KB.get(k);const imp=IMPORTED.get(k)||[];const rules=ruleEngine(a,b);
+  const x=(a.imported||b.imported)?null:features(a,b);const p=x&&MODEL?predict(MODEL,x):null;
+  const contrib=x?x.map((v,i)=>({n:FEAT_NAMES[i],c:v*MODEL.w[i]})).filter(o=>o.c>0.05).sort((p,q)=>q.c-p.c).slice(0,3):[];
+  let base=Math.max(kb?kb.sev:0,...imp.map(r=>r.sev),...rules.map(r=>r.sev),0);
+  const ctx=contextAdjust(a,b,base);
+  const sev=ctx.sev;
+  const safe=SAFE.has(k);
+  const mlFlag=sev===0&&p!==null&&p>=ML_FLAG&&!safe;
+  return {a,b,k,kb,imp,rules,p,contrib,sev,base,ctx,mlFlag,safe};
+}
+
+/* ============================================================
+   6. UI
+   ============================================================ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let SELECTED=[];
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove("on"),2000)}
+async function copyText(t,title){try{await navigator.clipboard.writeText(t);toast("Copied to clipboard")}catch(e){$("#mTitle").textContent=title||"Copy";$("#mText").value=t;$("#modal").classList.add("on");$("#mText").select()}}
+$("#mClose").onclick=()=>$("#modal").classList.remove("on");
+
+function headerPills(){$("#hp-drugs").textContent=DRUGS.size+" drugs";$("#hp-kb").textContent=(KB.size+[...IMPORTED.values()].length)+" known pairs";$("#hp-auc").textContent="ML AUC "+(MSTATS?MSTATS.auc.toFixed(3):"–")}
+
+// search dropdown
+let ddIdx=-1,ddItems=[];
+function renderDD(){
+  const q=$("#q").value.trim().toLowerCase();const dd=$("#dd");
+  if(!q){dd.style.display="none";return}
+  ddItems=[...DRUGS.values()].filter(d=>!SELECTED.includes(d.id)&&(d.name.toLowerCase().includes(q)||d.cls.toLowerCase().includes(q)))
+    .sort((x,y)=>(x.name.toLowerCase().startsWith(q)?0:1)-(y.name.toLowerCase().startsWith(q)?0:1)||x.name.localeCompare(y.name)).slice(0,12);
+  ddIdx=ddItems.length?0:-1;
+  dd.innerHTML=ddItems.length?ddItems.map((d,i)=>`<div data-id="${esc(d.id)}" class="${i===0?"act":""}"><span>${esc(d.name)}</span><span class="cls">${esc(d.cls)}</span></div>`).join(""):`<div style="cursor:default;color:var(--muted)">No match. Import it via Data Import.</div>`;
+  dd.style.display="block";
+}
+$("#q").addEventListener("input",renderDD);
+$("#q").addEventListener("keydown",e=>{
+  const items=[...$("#dd").querySelectorAll("div[data-id]")];
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();if(!items.length)return;ddIdx=(ddIdx+(e.key==="ArrowDown"?1:-1)+items.length)%items.length;items.forEach((el,i)=>el.classList.toggle("act",i===ddIdx))}
+  else if(e.key==="Enter"){e.preventDefault();if(ddItems[ddIdx])addSel(ddItems[ddIdx].id)}
+  else if(e.key==="Escape"){$("#dd").style.display="none"}
+});
+$("#dd").addEventListener("mousedown",e=>{const el=e.target.closest("div[data-id]");if(el){e.preventDefault();addSel(el.dataset.id)}});
+$("#q").addEventListener("blur",()=>setTimeout(()=>$("#dd").style.display="none",120));
+function addSel(id){if(!SELECTED.includes(id)){if(SELECTED.length>=15){toast("Maximum 15 drugs");return}SELECTED.push(id)}$("#q").value="";$("#dd").style.display="none";$("#q").focus();renderChecker()}
+function removeSel(id){SELECTED=SELECTED.filter(x=>x!==id);renderChecker()}
+$("#clearBtn").onclick=()=>{SELECTED=[];renderChecker()};
+$("#presets").innerHTML=Object.keys(PRESETS).map(k=>`<button class="btn sm" data-p="${esc(k)}">${esc(k)}</button>`).join("");
+$("#presets").onclick=e=>{const b=e.target.closest("[data-p]");if(!b)return;SELECTED=PRESETS[b.dataset.p].map(idOf).filter(id=>DRUGS.has(id));renderChecker()};
+
+const sevBadge=(s,ml)=>ml?`<span class="sev sml">ML-flagged</span>`:`<span class="sev s${s}">${SEVLABEL[s]}</span>`;
+let RESULTS=[],FILTER="all";
+function renderChecker(){
+  $("#chips").innerHTML=SELECTED.length?SELECTED.map(id=>{const d=DRUGS.get(id);return `<span class="chip ${d.imported?"imp":""}" title="${esc(d.cls)}">${esc(d.name)}<button data-rm="${esc(id)}" aria-label="Remove">×</button></span>`}).join(""):`<span class="muted small">No drugs added yet.</span>`;
+  const out=$("#out");
+  if(SELECTED.length<2){
+    out.innerHTML=`<div class="card empty"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="8" width="11" height="8" rx="4" transform="rotate(-35 8.5 12)"/><circle cx="17" cy="15" r="5"/></svg><div style="font-weight:600;color:var(--ink);font-size:16px">Add at least two drugs</div><div>Search above or load an example regimen. All pairs are checked automatically.</div></div>`;
+    RESULTS=[];return;
+  }
+  const ds=SELECTED.map(id=>DRUGS.get(id));RESULTS=[];
+  for(let i=0;i<ds.length;i++)for(let j=i+1;j<ds.length;j++)RESULTS.push(analyse(ds[i],ds[j]));
+  RESULTS.sort((p,q)=>(q.sev-p.sev)||((q.mlFlag?1:0)-(p.mlFlag?1:0))||((q.p||0)-(p.p||0)));
+  const cnt=[0,0,0,0,0];let mlc=0;RESULTS.forEach(r=>{if(r.sev)cnt[r.sev]++;else if(r.mlFlag)mlc++});
+  const top=Math.max(...RESULTS.map(r=>r.sev));
+  const bannerTxt=top===4?"⛔ Contraindicated combination present. Review the regimen before dispensing.":top===3?"⚠️ Major interaction(s) found. Avoid the combination or monitor closely.":top===2?"Moderate interaction(s) found. Monitor and adjust doses as advised.":mlc?"No known interactions, but the ML model flags pairs for pharmacist review.":"✓ No clinically significant interactions detected among these drugs.";
+  // matrix
+  const rmap=new Map(RESULTS.map(r=>[r.k,r]));
+  const short=n=>n.length>13?n.slice(0,12)+"…":n;
+  let mx=`<div class="card matrix"><h2>Interaction matrix</h2><table><tr><th></th>${ds.map(d=>`<th class="rot"><div>${esc(short(d.name))}</div></th>`).join("")}</tr>`;
+  ds.forEach((a,i)=>{mx+=`<tr><th style="text-align:right">${esc(short(a.name))}</th>`;ds.forEach((b,j)=>{
+    if(i===j){mx+=`<td class="mself"></td>`;return}const r=rmap.get(pk(a.id,b.id));const cls=r.sev?"m"+r.sev:r.mlFlag?"mml":"m0";
+    const lab=r.sev===4?"CI":r.sev===3?"MAJ":r.sev===2?"MOD":r.sev===1?"min":r.mlFlag?"ML":"";
+    mx+=`<td class="${cls}" data-k="${esc(r.k)}" title="${esc(a.name)} + ${esc(b.name)}: ${r.mlFlag?"ML-flagged":SEVLABEL[r.sev]}${r.p!=null?" · ML p="+r.p.toFixed(2):""}">${lab}</td>`});mx+=`</tr>`});
+  mx+=`</table></div>`;
+  // regimen-level burdens
+  const bs=burdens(ds);
+  const bpanel=bs.length?`<div class="card" style="margin-bottom:16px"><h2>Whole-regimen burden</h2><p class="muted small" style="margin:-6px 0 12px">Risks that accumulate across every drug at once, which a pair-by-pair check cannot see.</p><div class="burden">${bs.map(b=>{
+    const cls=b.hits.length>=3?"hi":"md";
+    return `<div class="bcard ${cls}"><div class="bhead"><b>${esc(b.label)}</b><span class="bcount">${b.hits.length} drugs</span></div><div class="bdrugs">${b.hits.map(d=>esc(d.name)).join(" &middot; ")}</div><p class="small muted" style="margin:7px 0 0">${esc(b.note)}</p></div>`}).join("")}</div></div>`:"";
+  // filter chips
+  const fopts=[["all","All pairs",RESULTS.length],["3","Major and above",cnt[4]+cnt[3]],["2","Moderate and above",cnt[4]+cnt[3]+cnt[2]],["flag","Flagged only",cnt[4]+cnt[3]+cnt[2]+cnt[1]+mlc]];
+  const chips=`<div class="filters"><span class="small muted" style="margin-right:4px">Show</span>${fopts.map(([v,l,n])=>`<button class="fchip ${FILTER===v?"on":""}" data-f="${v}">${l} <span style="opacity:.6">${n}</span></button>`).join("")}</div>`;
+  const shown=RESULTS.filter(r=>FILTER==="all"?true:FILTER==="flag"?(r.sev>0||r.mlFlag):r.sev>=Number(FILTER));
+  out.innerHTML=`
+   <div class="stats">
+     <div class="stat"><b>${RESULTS.length}</b><span>Pairs checked</span></div>
+     <div class="stat c4"><b>${cnt[4]}</b><span>Contraindicated</span></div>
+     <div class="stat c3"><b>${cnt[3]}</b><span>Major</span></div>
+     <div class="stat c2"><b>${cnt[2]}</b><span>Moderate</span></div>
+     <div class="stat c1"><b>${cnt[1]+mlc}</b><span>Minor / ML-flagged</span></div>
+   </div>
+   <div class="banner b${top}">${bannerTxt}</div>
+   ${bpanel}
+   ${ds.length>2?mx:""}
+   ${chips}
+   <div id="reslist">${shown.length?shown.map((r,i)=>resCard(r,i<3&&(r.sev>=2||r.mlFlag))).join(""):`<div class="card empty">No pairs at this level. <button class="linkbtn" data-f="all">Show all pairs</button></div>`}</div>`;
+}
+function resCard(r,open){
+  const srcs=[];if(r.kb)srcs.push(`<span class="src kb">Curated KB</span>`);r.imp.forEach(x=>srcs.push(`<span class="src imp">${esc(x.src)}</span>`));
+  if(r.rules.length)srcs.push(`<span class="src rule">${r.rules.length} rule${r.rules.length>1?"s":""}</span>`);
+  if(r.p!=null)srcs.push(`<span class="src ml">ML ${(r.p*100).toFixed(0)}%</span>`);
+  const svc=r.sev?"sv"+r.sev:r.mlFlag?"svml":"sv0";
+  let body="";
+  if(r.kb){body+=`<div class="sec"><div class="sec-t">Known interaction · curated knowledge base</div><div class="finding"><div class="ft">${sevBadge(r.kb.sev)}</div><p>${esc(r.kb.effect)}</p></div><div class="mgmt"><b>Management:</b> ${esc(r.kb.mgmt)}</div></div>`}
+  r.imp.forEach(x=>{body+=`<div class="sec"><div class="sec-t">Imported record · ${esc(x.src)}</div><div class="finding"><div class="ft">${sevBadge(x.sev)}</div><p>${esc(x.effect)}</p></div>${x.mgmt?`<div class="mgmt"><b>Management:</b> ${esc(x.mgmt)}</div>`:""}</div>`});
+  if(r.rules.length){body+=`<div class="sec"><div class="sec-t">Rule engine · mechanism-based findings</div>${r.rules.map(x=>`<div class="finding"><div class="ft">${sevBadge(x.sev)} ${esc(x.title)} <span class="src">${x.rule}</span></div><p>${esc(x.mech)}</p></div>`).join("")}</div>`}
+  if(r.p!=null){body+=`<div class="sec"><div class="sec-t">Machine-learning prediction</div><div class="mlrow"><span>P(clinically significant interaction) = <b>${(r.p*100).toFixed(1)}%</b></span><div class="mlbar"><i style="width:${(r.p*100).toFixed(1)}%"></i></div></div>
+    <p class="small muted" style="margin:6px 0 0">${r.contrib.length?"Top contributing features: "+r.contrib.map(c=>`<b>${esc(c.n)}</b> (+${c.c.toFixed(2)})`).join(", "):"No risk-increasing features detected."}${r.mlFlag?" <b style='color:var(--ml)'>Not in the knowledge base and no rule triggered, but the model predicts an interaction. Verify in a professional reference.</b>":""}</p></div>`}
+  else if(r.a.imported||r.b.imported){body+=`<div class="sec small muted">ML and rules unavailable: an imported drug has no pharmacological profile.</div>`}
+  if(r.ctx&&r.ctx.notes.length){body+=`<div class="sec"><div class="sec-t">Patient context</div>${r.ctx.notes.map(n=>`<div class="ctxnote">${esc(n)}</div>`).join("")}${r.ctx.bumped?`<p class="small muted" style="margin:7px 0 0">Severity raised from <b>${SEVLABEL[r.base]}</b> to <b>${SEVLABEL[r.sev]}</b> because of the patient context you set.</p>`:""}</div>`}
+  if(!r.kb&&!r.imp.length&&!r.rules.length){body+=`<div class="sec"><div class="mgmt" style="background:var(--s0b);color:var(--s0)">${r.safe?"Documented as having no clinically significant interaction.":"No interaction found in the knowledge base or rule engine."}</div></div>`}
+  return `<div class="res ${svc} ${open?"open":""}"><div class="res-h"><span class="pair">${esc(r.a.name)}<span class="arrow"> ⇄ </span>${esc(r.b.name)}</span>${sevBadge(r.sev,r.mlFlag)}<div class="srcs">${srcs.join("")}</div></div><div class="res-b">${body}</div></div>`;
+}
+$("#chips").onclick=e=>{const b=e.target.closest("[data-rm]");if(b)removeSel(b.dataset.rm)};
+$("#out").addEventListener("click",e=>{
+  const fc=e.target.closest("[data-f]");if(fc){FILTER=fc.dataset.f;renderChecker();return}
+  const h=e.target.closest(".res-h");if(h){h.parentElement.classList.toggle("open");return}
+  const td=e.target.closest("td[data-k]");if(td){const i=RESULTS.findIndex(r=>r.k===td.dataset.k);const el=$("#reslist").children[i];if(el){el.classList.add("open");el.scrollIntoView({behavior:"smooth",block:"center"})}}
+});
+/* Patient context */
+document.querySelectorAll("[data-ctx]").forEach(cb=>cb.addEventListener("change",()=>{PC[cb.dataset.ctx]=cb.checked;renderChecker()}));
+
+/* Saved regimens */
+const SVK="ddi_regimens_v1";
+const loadSaved=()=>{try{return JSON.parse(localStorage.getItem(SVK)||"{}")}catch(e){return {}}};
+const putSaved=o=>{try{localStorage.setItem(SVK,JSON.stringify(o))}catch(e){}};
+function renderSaved(){
+  const o=loadSaved(),ks=Object.keys(o).sort();
+  $("#savedList").innerHTML=ks.length?ks.map(n=>`<div class="row"><span data-load="${esc(n)}">${esc(n)}</span><small>${o[n].length}</small><button data-del="${esc(n)}" aria-label="Delete">&times;</button></div>`).join(""):`<p class="muted small" style="margin:8px 0 0">Nothing saved yet. Build a list, name it and save it to this browser.</p>`;
+}
+$("#saveBtn").onclick=()=>{
+  const n=$("#saveName").value.trim();
+  if(!n){toast("Name the regimen first");return}
+  if(SELECTED.length<1){toast("Add at least one drug");return}
+  const o=loadSaved();o[n]=SELECTED.slice();putSaved(o);$("#saveName").value="";renderSaved();toast("Saved “"+n+"”");
+};
+$("#savedList").addEventListener("click",e=>{
+  const l=e.target.closest("[data-load]");
+  if(l){const o=loadSaved();SELECTED=(o[l.dataset.load]||[]).filter(id=>DRUGS.has(id));renderChecker();toast("Loaded “"+l.dataset.load+"”");return}
+  const d=e.target.closest("[data-del]");
+  if(d){const o=loadSaved();delete o[d.dataset.del];putSaved(o);renderSaved();toast("Deleted")}
+});
+renderSaved();
+
+/* CSV export */
+$("#csvBtn").onclick=()=>{
+  if(SELECTED.length<2){toast("Add at least two drugs first");return}
+  const q=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`;
+  const L=["drug_1,drug_2,severity,ml_flagged,ml_probability,sources,rules_fired,mechanism,management"];
+  RESULTS.forEach(r=>{
+    const src=[r.kb?"Curated KB":"",...r.imp.map(x=>x.src),r.rules.length?"Rule engine":"",r.p!=null?"ML":""].filter(Boolean).join("; ");
+    const mech=[r.kb?r.kb.effect:"",...r.imp.map(x=>x.effect),...r.rules.map(x=>x.title+": "+x.mech),...(r.ctx?r.ctx.notes:[])].filter(Boolean).join(" | ");
+    L.push([r.a.name,r.b.name,SEVLABEL[r.sev],r.mlFlag?"yes":"no",r.p!=null?r.p.toFixed(3):"",src,r.rules.map(x=>x.rule).join(";"),mech,r.kb?r.kb.mgmt:""].map(q).join(","));
+  });
+  copyText(L.join("\n"),"Results as CSV");
+};
+
+$("#copyBtn").onclick=()=>{
+  if(SELECTED.length<2){toast("Add at least two drugs first");return}
+  const L=[];L.push("MEDSECURE — DRUG–DRUG INTERACTION REPORT");L.push("Generated: "+new Date().toLocaleString());L.push("Medications: "+SELECTED.map(id=>DRUGS.get(id).name).join(", "));
+  const ctxOn=Object.keys(PC).filter(k=>PC[k]);
+  if(ctxOn.length)L.push("Patient context: "+ctxOn.map(k=>({elderly:"age 65+",renal:"renal impairment",hepatic:"hepatic impairment"})[k]).join(", "));
+  L.push("");
+  RESULTS.forEach(r=>{L.push(`■ ${r.a.name} + ${r.b.name} — ${r.mlFlag?"ML-FLAGGED":SEVLABEL[r.sev].toUpperCase()}${r.p!=null?` (ML p=${r.p.toFixed(2)})`:""}`);
+    if(r.kb){L.push("  Effect: "+r.kb.effect);L.push("  Management: "+r.kb.mgmt)}
+    r.imp.forEach(x=>L.push(`  [${x.src}] ${x.effect}`));
+    r.rules.forEach(x=>L.push(`  [${x.rule}] ${x.title}: ${x.mech}`));
+    if(r.ctx)r.ctx.notes.forEach(n=>L.push("  [Patient context] "+n));L.push("")});
+  const bl=burdens(SELECTED.map(id=>DRUGS.get(id)));
+  if(bl.length){L.push("WHOLE-REGIMEN BURDEN");bl.forEach(b=>L.push(`  ${b.label}: ${b.hits.length} drugs — ${b.hits.map(d=>d.name).join(", ")}`));L.push("")}
+  L.push("Educational prototype. Verify with a professional drug-interaction reference.");
+  copyText(L.join("\n"),"Interaction report");
+};
+
+/* Library */
+function renderLib(){
+  const q=$("#libq").value.trim().toLowerCase();
+  const rows=[...DRUGS.values()].filter(d=>{if(!q)return true;const hay=[d.name,d.cls,...d.sub.map(c=>"cyp"+c),...Object.keys(d.inh).map(c=>"cyp"+c),...d.ind.map(c=>"cyp"+c),...d.f].join(" ").toLowerCase();return hay.includes(q)}).sort((a,b)=>a.name.localeCompare(b.name));
+  $("#libT").innerHTML=`<tr><th>Drug</th><th>Class</th><th>CYP450 / transporter profile</th><th>Pharmacodynamic flags</th></tr>`+rows.map(d=>{
+    const cyp=[...d.sub.map(c=>`<span class="tag s">${c} sub</span>`),...Object.entries(d.inh).map(([c,l])=>`<span class="tag i">${c} ${l} inh</span>`),...d.ind.map(c=>`<span class="tag d">${c} inducer</span>`),d.prodrug?`<span class="tag s">prodrug via ${d.prodrug}</span>`:"",...["pgpS","pgpI","pgpInd"].filter(f=>d.f.has(f)).map(f=>`<span class="tag">${{pgpS:"P-gp substrate",pgpI:"P-gp inhibitor",pgpInd:"P-gp inducer"}[f]}</span>`)].join("");
+    const fl=[...d.f].filter(f=>!["pgpS","pgpI","pgpInd"].includes(f)).map(f=>`<span class="tag">${f}</span>`).join("");
+    return `<tr><td><b>${esc(d.name)}</b>${d.imported?' <span class="src imp">imported</span>':""}</td><td>${esc(d.cls)}</td><td>${cyp||'<span class="muted">—</span>'}</td><td>${fl||'<span class="muted">—</span>'}</td></tr>`}).join("");
+}
+$("#libq").addEventListener("input",renderLib);
+
+/* Model view */
+function rocSVG(){
+  const W=360,H=300,p=36;const sx=v=>p+v*(W-p-12),sy=v=>H-p-v*(H-p-12);
+  const path=pts=>pts.map((q,i)=>(i?"L":"M")+sx(q[0]).toFixed(1)+","+sy(q[1]).toFixed(1)).join("");
+  let g="";for(let t=0;t<=1.001;t+=.25){g+=`<line x1="${sx(t)}" y1="${sy(0)}" x2="${sx(t)}" y2="${sy(1)}" stroke="rgba(76,110,180,.14)"/><line x1="${sx(0)}" y1="${sy(t)}" x2="${sx(1)}" y2="${sy(t)}" stroke="rgba(76,110,180,.14)"/><text x="${sx(t)}" y="${H-p+16}" font-size="10" text-anchor="middle" fill="#5a6d8f" font-family="JetBrains Mono,monospace">${t}</text><text x="${p-6}" y="${sy(t)+3}" font-size="10" text-anchor="end" fill="#5a6d8f" font-family="JetBrains Mono,monospace">${t}</text>`}
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:460px">${g}
+   <line x1="${sx(0)}" y1="${sy(0)}" x2="${sx(1)}" y2="${sy(1)}" stroke="rgba(90,109,143,.4)" stroke-dasharray="4 4"/>
+   <path d="${path(MSTATS.ruleRoc)}" fill="none" stroke="#f59e0b" stroke-width="2"/>
+   <path d="${path(MSTATS.roc)}" fill="none" stroke="#7c3aed" stroke-width="2.5"/>
+   <text x="${W/2}" y="${H-4}" font-size="11" text-anchor="middle" fill="#5a6d8f">False positive rate</text>
+   <text x="11" y="${H/2}" font-size="11" text-anchor="middle" fill="#5a6d8f" transform="rotate(-90 11 ${H/2})">True positive rate</text>
+   <rect x="${sx(.42)}" y="${sy(.3)}" width="190" height="44" rx="7" fill="#fff" stroke="rgba(76,110,180,.28)"/>
+   <line x1="${sx(.45)}" y1="${sy(.3)+15}" x2="${sx(.45)+18}" y2="${sy(.3)+15}" stroke="#7c3aed" stroke-width="2.5"/><text x="${sx(.45)+24}" y="${sy(.3)+18}" font-size="11" fill="#0d1b36">ML model (AUC ${MSTATS.auc.toFixed(3)})</text>
+   <line x1="${sx(.45)}" y1="${sy(.3)+32}" x2="${sx(.45)+18}" y2="${sy(.3)+32}" stroke="#f59e0b" stroke-width="2"/><text x="${sx(.45)+24}" y="${sy(.3)+35}" font-size="11" fill="#0d1b36">Rules only (AUC ${MSTATS.ruleAuc.toFixed(3)})</text>
+  </svg>`;
+}
+function wtsSVG(){
+  const items=FEAT_NAMES.map((n,i)=>({n,w:MODEL.w[i]})).sort((a,b)=>b.w-a.w);
+  const W=520,row=17,H=items.length*row+20,lab=230,mid=lab+(W-lab)/2;const mx=Math.max(...items.map(o=>Math.abs(o.w)))||1;const sc=(W-lab-20)/2/mx;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%"><defs><linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="#0091ff"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><line x1="${mid}" y1="0" x2="${mid}" y2="${H-14}" stroke="rgba(76,110,180,.3)"/>`+items.map((o,i)=>{const y=i*row+4;const w=o.w*sc;
+    return `<text x="${lab-6}" y="${y+11}" font-size="10.5" text-anchor="end" fill="#32456a">${esc(o.n)}</text><rect x="${w>=0?mid:mid+w}" y="${y+2}" width="${Math.abs(w)}" height="11" rx="2" fill="${w>=0?"url(#wg)":"rgba(120,140,170,.5)"}"/><text x="${w>=0?mid+w+4:mid+w-4}" y="${y+11}" font-size="9.5" text-anchor="${w>=0?"start":"end"}" fill="#5a6d8f" font-family="JetBrains Mono,monospace">${o.w.toFixed(2)}</text>`}).join("")+`</svg>`;
+}
+function renderModel(){
+  const s=MSTATS;const k=(v,l,c,g)=>`<div class="stat"><b style="color:${c||"var(--ink)"};text-shadow:0 0 18px ${g||"transparent"}">${v}</b><span>${l}</span></div>`;
+  $("#kpis").innerHTML=k(s.auc.toFixed(3),"Test ROC-AUC","var(--vi)")+k(s.cvMean.toFixed(3)+" ± "+s.cvSd.toFixed(3),"5-fold CV AUC","var(--cy)")+k((s.acc*100).toFixed(1)+"%","Accuracy (p ≥ 0.5)","var(--lm)")+k(s.f1.toFixed(3),"F1-score","#0369a1")+
+    k((s.prec*100).toFixed(1)+"%","Precision","#0369a1")+k((s.rec*100).toFixed(1)+"%","Recall / sensitivity","var(--lm)")+k(s.ruleAuc.toFixed(3),"Rules-only baseline AUC","var(--am)")+k(s.ms.toFixed(0)+" ms","Training time (7 fits)","var(--mg)");
+  $("#roc").innerHTML=rocSVG();
+  $("#rocNote").innerHTML=`Test set: ${s.test} pairs (TP ${s.cm.tp}, FP ${s.cm.fp}, TN ${s.cm.tn}, FN ${s.cm.fn}). Random seed ${s.seed}.<br>`+(s.ruleAuc>s.auc?`<b>Interpretation:</b> on this split the rules-only baseline scores slightly higher. The sampled "unlabelled" negatives include real but undocumented interactions (positive–unlabelled noise), which penalises the model for flagging them. This is a known limitation of PU learning and a good discussion point for your report.`:`<b>Interpretation:</b> the hybrid ML model beats the rules-only baseline. Learning from labelled examples lets it weight mechanisms by clinical relevance instead of using fixed rule severities.`);
+  $("#wts").innerHTML=wtsSVG();
+  $("#dsinfo").innerHTML=`<table class="lib"><tr><td>Positive pairs (curated, moderate or worse)</td><td><b>${s.ds.nPos-s.ds.nImp}</b></td></tr><tr><td>Positive pairs (imported DrugBank/TWOSIDES)</td><td><b>${s.ds.nImp}</b></td></tr><tr><td>Curated negative pairs</td><td><b>${s.ds.nSafe}</b></td></tr><tr><td>Sampled unlabelled pairs (as negatives)</td><td><b>${s.ds.nUnl}</b></td></tr><tr><td>Total / train / test</td><td><b>${s.ds.rows.length}</b> / ${s.train} / ${s.test}</td></tr><tr><td>Features per pair</td><td><b>${FEAT_NAMES.length}</b></td></tr></table>`;
+  headerPills();
+}
+$("#retrain").onclick=()=>{trainAll(SEED);renderModel();renderChecker();toast("Model retrained")};
+$("#reseed").onclick=()=>{SEED=Math.floor(Math.random()*1e9);trainAll(SEED);renderModel();renderChecker();toast("Retrained with seed "+SEED)};
+
+/* Data import */
+function parseCSV(text){
+  const rows=[];let row=[],cur="",q=false;const delim=text.split("\n")[0].includes("\t")?"\t":",";
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+    else if(c==='"')q=true;else if(c===delim){row.push(cur);cur=""}else if(c==="\n"||c==="\r"){if(c==="\r"&&text[i+1]==="\n")i++;row.push(cur);cur="";if(row.some(v=>v.trim()))rows.push(row);row=[]}else cur+=c}
+  row.push(cur);if(row.some(v=>v.trim()))rows.push(row);return rows;
+}
+function getDrug(name){const id=idOf(name);if(DRUGS.has(id))return DRUGS.get(id);
+  const alias={acetaminophen:"paracetamol",rifampin:"rifampicin","sulfamethoxazole/trimethoprim":"co-trimoxazole","trimethoprim/sulfamethoxazole":"co-trimoxazole",cyclosporin:"cyclosporine",ciclosporin:"cyclosporine",ethanol:"alcohol (ethanol)",alcohol:"alcohol (ethanol)","glyceryl trinitrate":"nitroglycerin","hypericum perforatum":"st john's wort","st. john's wort":"st john's wort","insulin human":"insulin"};
+  if(alias[id])return DRUGS.get(alias[id]);
+  const nm=name.trim().replace(/\b\w/g,c=>c.toUpperCase());return addDrug(nm,"Imported (no pharmacology profile)",{},true)}
+function importText(text){
+  const log=[];const rows=parseCSV(text.trim());if(rows.length<2){$("#log").textContent="No data rows found.";return}
+  const H=rows[0].map(h=>h.trim().toLowerCase());const col=(...ns)=>H.findIndex(h=>ns.includes(h));
+  const isTS=col("drug_1_concept_name")>=0;let added=0,newDrugs=0,skipped=0;const before=DRUGS.size;
+  if(isTS){
+    const c1=col("drug_1_concept_name"),c2=col("drug_2_concept_name"),cc=col("condition_concept_name"),cp=col("prr");
+    if(c2<0){$("#log").textContent="TWOSIDES header found but drug_2_concept_name is missing.";return}
+    const agg=new Map();
+    rows.slice(1).forEach(r=>{const a=(r[c1]||"").trim(),b=(r[c2]||"").trim();if(!a||!b||idOf(a)===idOf(b)){skipped++;return}
+      const da=getDrug(a),db=getDrug(b);const k=pk(da.id,db.id);const prr=parseFloat(r[cp])||0;
+      if(!agg.has(k))agg.set(k,{a:da,b:db,conds:[]});agg.get(k).conds.push({c:(r[cc]||"adverse event").trim(),prr})});
+    agg.forEach((v,k)=>{v.conds.sort((x,y)=>y.prr-x.prr);const mx=v.conds[0].prr;
+      const rec={src:"TWOSIDES signal",sev:mx>=2?2:1,effect:`Pharmacovigilance co-prescription signal (FAERS, ${v.conds.length} adverse event${v.conds.length>1?"s":""}). Strongest: ${v.conds.slice(0,4).map(c=>`${c.c} (PRR ${c.prr.toFixed(1)})`).join("; ")}.`,mgmt:"Statistical signal, not proof of causation. Interpret alongside the mechanism and clinical references."};
+      IMPORTED.set(k,[...(IMPORTED.get(k)||[]).filter(x=>x.src!=="TWOSIDES signal"),rec]);added++});
+    log.push(`Detected format: TWOSIDES (nSIDES).`,`Rows read: ${rows.length-1}. Drug pairs aggregated: ${agg.size}.`);
+  } else {
+    const c1=col("drug1","drug_1","drug a","drug_a","drug1_name","drug"),c2=col("drug2","drug_2","drug b","drug_b","drug2_name","interacting drug"),cs=col("severity","level"),cd=col("description","effect","interaction"),cm=col("management","recommendation","action");
+    if(c1<0||c2<0){$("#log").textContent="Could not find drug columns. Expected drug1,drug2,… or TWOSIDES headers.";return}
+    rows.slice(1).forEach(r=>{const a=(r[c1]||"").trim(),b=(r[c2]||"").trim();if(!a||!b||idOf(a)===idOf(b)){skipped++;return}
+      const da=getDrug(a),db=getDrug(b);let s=SEVS.indexOf((r[cs]||"moderate").trim().toLowerCase());if(s<1)s=2;
+      const k=pk(da.id,db.id);IMPORTED.set(k,[...(IMPORTED.get(k)||[]),{src:"DrugBank import",sev:s,effect:(r[cd]||"Interaction reported in imported dataset.").trim(),mgmt:(r[cm]||"").trim()}]);added++});
+    log.push(`Detected format: DrugBank-style interaction table.`,`Rows read: ${rows.length-1}.`);
+  }
+  newDrugs=DRUGS.size-before;
+  log.push(`Interaction records added: ${added}. Skipped rows: ${skipped}.`,`New drugs created (no profile → KB lookup only): ${newDrugs}.`);
+  const st=trainAll(SEED);log.push(`ML model retrained: ${st.ds.nImp} imported positives used. Test AUC = ${st.auc.toFixed(3)}.`);
+  $("#log").textContent=log.join("\n");renderModel();renderLib();renderChecker();headerPills();toast("Import complete");
+}
+$("#importBtn").onclick=()=>{const t=$("#paste").value;if(!t.trim()){toast("Paste CSV text first");return}importText(t)};
+$("#file").onchange=e=>{const f=e.target.files[0];if(!f)return;if(f.size>25e6){$("#log").textContent="File larger than 25 MB. Filter it first with train_ddi_model.py.";return}
+  const rd=new FileReader();rd.onload=()=>importText(rd.result);rd.readAsText(f)};
+$("#sampleDB").onclick=()=>{$("#paste").value=`drug1,drug2,severity,description,management
+Clarithromycin,Quetiapine,major,"Strong CYP3A4 inhibition increases quetiapine exposure; QT prolongation and sedation.","Avoid or reduce quetiapine dose."
+Fluconazole,Citalopram,major,"Additive QT prolongation and CYP2C19 inhibition increases citalopram exposure.","Avoid; consider alternative antifungal."
+Amiodarone,Atorvastatin,moderate,"Possible increase in atorvastatin exposure; myopathy.","Monitor for muscle symptoms."
+Allopurinol,Amoxicillin,minor,"Increased incidence of skin rash.","Monitor for rash."`;toast("Example loaded — click Import")};
+$("#sampleTS").onclick=()=>{$("#paste").value=`drug_1_concept_name,drug_2_concept_name,condition_concept_name,PRR
+Omeprazole,Metformin,Lactic acidosis,2.4
+Omeprazole,Metformin,Hypomagnesaemia,1.8
+Amlodipine,Atorvastatin,Myalgia,2.1
+Sertraline,Ibuprofen,Gastrointestinal haemorrhage,3.6
+Sertraline,Ibuprofen,Anaemia,2.2
+Levothyroxine,Omeprazole,Hypothyroidism,1.6`;toast("Format example loaded (illustrative values) — click Import")};
+$("#expProfiles").onclick=()=>{const L=["drug,class,cyp_substrate,cyp_strong_inh,cyp_moderate_inh,cyp_inducer,prodrug_cyp,flags"];
+  [...DRUGS.values()].filter(d=>!d.imported).forEach(d=>{const inh=l=>Object.entries(d.inh).filter(([,v])=>v===l).map(([c])=>c).join(";");
+    L.push([d.name,d.cls,d.sub.join(";"),inh("strong"),inh("moderate"),d.ind.join(";"),d.prodrug||"",[...d.f].join(";")].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","))});
+  copyText(L.join("\n"),"drug_profiles.csv")};
+$("#expKB").onclick=()=>{const L=["drug1,drug2,severity,description,management"];KB_RAW.forEach(r=>L.push(r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")));copyText(L.join("\n"),"curated_kb.csv")};
+
+/* About */
+$("#rulesT").innerHTML=RULES.map(r=>`<tr><td><span class="src rule">${r[0]}</span></td><td style="white-space:nowrap"><b>${r[1]}</b></td><td>${r[2]}</td></tr>`).join("");
+
+/* Routing */
+function route(){const v=(location.hash||"#checker").slice(1);const ok=["checker","library","model","data","about"].includes(v)?v:"checker";
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+ok));document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("on",a.dataset.v===ok))}
+window.addEventListener("hashchange",route);
+
+/* Boot */
+trainAll(SEED);renderModel();renderLib();
+SELECTED=PRESETS["Elderly cardiac"].map(idOf);renderChecker();route();headerPills();
+
+
+/* ── Authentication (client-side demonstration only) ─────────────────
+   Accounts live in this browser's localStorage. Passwords are salted and
+   hashed with SHA-256 so they are not stored in clear text, but a static
+   page cannot authenticate anyone: this is an access screen for a student
+   project, not a security control. Never reuse a real password here. */
+(function(){
+  const UK="ddi_users_v1", SK="ddi_session_v1";
+  const A=$("#auth"),f=$("#authForm"),err=$("#auErr"),go=$("#auGo");
+  const fName=$("#fldName"),fRole=$("#fldRole");
+  let mode="in";
+  const read=k=>{try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}};
+  const save=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+  async function hash(pw,salt){
+    const txt=salt+"|"+pw;
+    if(window.crypto&&crypto.subtle&&crypto.subtle.digest){
+      try{
+        const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(txt));
+        return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+      }catch(e){}
+    }
+    let h1=0x811c9dc5,h2=0x1000193;            // fallback where SubtleCrypto is unavailable
+    for(let i=0;i<txt.length;i++){h1=Math.imul(h1^txt.charCodeAt(i),16777619)>>>0;h2=Math.imul(h2^txt.charCodeAt(i),2246822519)>>>0}
+    return (h1>>>0).toString(16).padStart(8,"0")+(h2>>>0).toString(16).padStart(8,"0");
+  }
+  const salt=()=>{const a=new Uint8Array(12);(window.crypto&&crypto.getRandomValues)?crypto.getRandomValues(a):a.forEach((_,i)=>a[i]=Math.floor(Math.random()*256));return [...a].map(x=>x.toString(16).padStart(2,"0")).join("")};
+  function setMode(m){
+    mode=m;err.textContent="";
+    document.querySelectorAll(".authtab").forEach(t=>t.classList.toggle("on",t.dataset.mode===m));
+    fName.style.display=fRole.style.display=(m==="up"?"block":"none");
+    $("#auName").required=(m==="up");
+    $("#auPass").setAttribute("autocomplete",m==="up"?"new-password":"current-password");
+    go.textContent=(m==="up"?"Create account":"Sign in");
+  }
+  document.querySelectorAll(".authtab").forEach(t=>t.addEventListener("click",()=>setMode(t.dataset.mode)));
+  function enter(session){
+    save(SK,session);A.classList.add("off");
+    $("#who").innerHTML=`<b>${esc(session.name)}</b><button class="linkbtn" id="auOut" style="font-size:11px">Sign out</button>`;
+    $("#auOut").addEventListener("click",()=>{try{localStorage.removeItem(SK)}catch(e){}location.reload()});
+    const seen=(()=>{try{return localStorage.getItem("ddi_ack_v1")==="1"}catch(e){return false}})();
+    if(!seen)document.body.style.overflow="hidden";
+  }
+  f.addEventListener("submit",async e=>{
+    e.preventDefault();err.textContent="";
+    const em=$("#auEmail").value.trim().toLowerCase(),pw=$("#auPass").value,nm=$("#auName").value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){err.textContent="Enter a valid email address.";return}
+    const users=read(UK)||{};
+    if(mode==="up"){
+      if(!nm){err.textContent="Enter your name.";return}
+      if(pw.length<8){err.textContent="Password must be at least 8 characters.";return}
+      if(users[em]){err.textContent="An account with that email already exists in this browser.";return}
+      const sl=salt();users[em]={name:nm,role:$("#auRole").value,salt:sl,hash:await hash(pw,sl),joined:new Date().toISOString()};
+      save(UK,users);enter({email:em,name:nm,role:users[em].role});
+    }else{
+      const u=users[em];
+      if(!u||await hash(pw,u.salt)!==u.hash){err.textContent="Email or password is not recognised in this browser.";return}
+      enter({email:em,name:u.name,role:u.role});
+    }
+  });
+  $("#auGuest").addEventListener("click",()=>enter({email:"",name:"Guest",role:"Guest"}));
+  setMode("in");
+  const sess=read(SK);
+  if(sess&&sess.name)enter(sess); else document.body.style.overflow="hidden";
+})();
+
+/* Disclaimer gate */
+(function(){
+  const g=$("#gate"),cb=$("#gateAgree"),bt=$("#gateBtn");
+  let seen=false;try{seen=localStorage.getItem("ddi_ack_v1")==="1"}catch(e){}
+  if(seen)g.classList.add("off");
+  cb.addEventListener("change",()=>{bt.disabled=!cb.checked});
+  bt.addEventListener("click",()=>{
+    if(!cb.checked)return;
+    try{localStorage.setItem("ddi_ack_v1","1")}catch(e){}
+    g.classList.add("off");document.body.style.overflow="";
+  });
+})();
+
+</script>
+</body>
+</html>
