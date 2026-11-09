@@ -475,14 +475,21 @@ ol.refs li{margin-bottom:7px;color:#32456a}
       <div class="log" id="log">Ready.</div>
     </div>
     <div class="card">
-      <h2>Supported formats</h2>
-      <h3>1. DrugBank-style interaction table</h3>
-      <p class="small">Columns: <code>drug1, drug2, severity, description, management</code> (severity: contraindicated / major / moderate / minor). DrugBank data requires a free academic licence from go.drugbank.com. Export the interaction table from the XML and save it as CSV.</p>
-      <h3>2. TWOSIDES (nSIDES) adverse-event signals</h3>
-      <p class="small">Columns: <code>drug_1_concept_name, drug_2_concept_name, condition_concept_name, PRR</code>. TWOSIDES is open data from the Tatonetti Lab (nsides.io), mined from FDA FAERS reports. Rows are grouped by drug pair and the strongest signals are kept. Pairs with PRR ≥ 2 count as moderate pharmacovigilance signals.</p>
-      <div class="note">The full TWOSIDES file has ~42 M rows, which is too large for a browser. Filter it first with the companion Python script (<code>train_ddi_model.py</code>), for example to your study drugs, or PRR ≥ 2 and ≥ 10 reports, then import the reduced CSV here.</div>
-      <h3>Export for Python pipeline</h3>
-      <p class="small">Copy the drug-profile table as CSV. The Python script uses it to build the same mechanistic features from real TWOSIDES data.</p>
+      <h2>Supported formats &amp; current sources</h2>
+      <p class="small muted" style="margin-top:0">Reference data checked against the publishers in November 2026. Versions move, so confirm before citing in your dissertation.</p>
+      <h3>1. DrugBank &mdash; interaction table</h3>
+      <p class="small">Columns: <code>drug1, drug2, severity, description, management</code> (severity: contraindicated / major / moderate / minor).<br>
+      <b>Current:</b> DrugBank 6.0 is the latest major release (Knox et al., <i>Nucleic Acids Res</i> 2024). It grew FDA-approved drugs from 2,646 to 4,563 and drug&ndash;drug interaction records from 365,984 to <b>1,413,413</b> &mdash; roughly a 300% increase over DrugBank 5.0, which earlier versions of this tool were built against. The downloadable XML is versioned separately; <b>5.1.21</b> was released on 2 June 2026. A free account and academic licence are required at go.drugbank.com.</p>
+      <h3>2. TWOSIDES / nSIDES &mdash; pharmacovigilance signals</h3>
+      <p class="small">Columns: <code>drug_1_concept_name, drug_2_concept_name, condition_concept_name, PRR</code>.<br>
+      <b>Current:</b> TWOSIDES covers over 3,300 drugs and roughly 63,000 drug combinations mined from FAERS, released under CC-BY 4.0. The nSIDES family has since grown to include <b>OFFSIDES</b> (438,801 off-label signals across 1,332 drugs), <b>OnSIDES</b> (2.7 million adverse reactions extracted from about 42,000 FDA labels using a ClinicalBERT model) and <b>KidSIDES</b> (paediatric signals). The lab has moved to Cedars-Sinai; downloads remain at nsides.io.</p>
+      <h3>3. DDInter 2.0 &mdash; curated interactions with management</h3>
+      <p class="small">Import using the DrugBank column layout. <b>DDInter 2.0</b> (<i>Nucleic Acids Res</i> 2025;53(D1):D1356) covers 2,310 drugs and <b>302,516 interaction records</b> with 8,398 distinct pharmacist-reviewed mechanism descriptions and management recommendations, plus drug&ndash;food, drug&ndash;disease and therapeutic-duplication records. Free for academic use and a good complement to DrugBank for this project.</p>
+      <h3>4. FDA &mdash; CYP and transporter tables</h3>
+      <p class="small">The FDA now publishes a clinician-facing companion to the developer table: <i>Examples of Drugs that Interact with CYP Enzymes and Transporter Systems</i>. It adds non-drug perpetrators &mdash; St John&rsquo;s wort, curcumin, diosmin, tobacco smoke and grapefruit juice &mdash; and is the source used here for strong-versus-moderate inhibitor grading.</p>
+      <div class="note">The full TWOSIDES file runs to tens of millions of rows, too large for a browser. Filter it first with the companion Python script (<code>train_ddi_model.py</code>) &mdash; for example to your study drugs, or PRR &ge; 2 with at least 10 reports &mdash; then import the reduced CSV here.</div>
+      <h3>Export for the Python pipeline</h3>
+      <p class="small">Copy the drug-profile table as CSV. The Python script rebuilds the same mechanistic features from real TWOSIDES data.</p>
       <button class="btn sm" id="expProfiles">Copy drug_profiles.csv</button>
       <button class="btn sm" id="expKB">Copy curated KB (CSV)</button>
     </div>
@@ -519,12 +526,16 @@ ol.refs li{margin-bottom:7px;color:#32456a}
     <div class="card">
       <h2>Key references</h2>
       <ol class="refs small">
-        <li>Wishart DS et al. DrugBank 5.0: a major update to the DrugBank database. <i>Nucleic Acids Res.</i> 2018;46:D1074–82.</li>
-        <li>Tatonetti NP, Ye PP, Daneshjou R, Altman RB. Data-driven prediction of drug effects and interactions. <i>Sci Transl Med.</i> 2012;4(125):125ra31. (TWOSIDES)</li>
+        <li>Knox C, Wilson M, Klinger CM, et al. DrugBank 6.0: the DrugBank Knowledgebase for 2024. <i>Nucleic Acids Res.</i> 2024;52(D1):D1265&ndash;D1275.</li>
+        <li>Wishart DS, Feunang YD, Guo AC, et al. DrugBank 5.0: a major update to the DrugBank database for 2018. <i>Nucleic Acids Res.</i> 2018;46:D1074&ndash;82.</li>
+        <li>Tatonetti NP, Ye PP, Daneshjou R, Altman RB. Data-driven prediction of drug effects and interactions. <i>Sci Transl Med.</i> 2012;4(125):125ra31. (OFFSIDES / TWOSIDES)</li>
+        <li>DDInter 2.0: an enhanced drug interaction resource with expanded interaction types and mechanism annotation. <i>Nucleic Acids Res.</i> 2025;53(D1):D1356.</li>
+        <li>US FDA. Examples of Drugs that Interact with CYP Enzymes and Transporter Systems (healthcare-professional table).</li>
         <li>US FDA. Drug Development and Drug Interactions: Table of Substrates, Inhibitors and Inducers.</li>
-        <li>Flockhart DA. Drug Interactions: Cytochrome P450 Drug Interaction Table. Indiana University School of Medicine.</li>
-        <li>Baxter K, Preston CL (eds). <i>Stockley's Drug Interactions.</i> Pharmaceutical Press.</li>
-        <li>CredibleMeds®. QTdrugs list (QT-prolongation risk categories).</li>
+        <li>Flockhart DA, Thacker D, McDonald C, Desta Z. The Flockhart Cytochrome P450 Drug Interaction Table. Indiana University School of Medicine.</li>
+        <li>Baxter K, Preston CL (eds). <i>Stockley&rsquo;s Drug Interactions.</i> Pharmaceutical Press.</li>
+        <li>CredibleMeds&reg;. QTdrugs list (QT-prolongation risk categories).</li>
+        <li>Ryu JY, Kim HU, Lee SY. Deep learning improves prediction of drug&ndash;drug and drug&ndash;food interactions. <i>PNAS</i> 2018;115(18):E4304&ndash;11.</li>
       </ol>
     </div>
   </div>
@@ -643,7 +654,7 @@ const DRUGS_RAW = [
  ["Amlodipine","Calcium channel blocker (DHP)",{sub:["3A4"],f:["hypoT"]}],
  ["Metoprolol","Beta-blocker (cardioselective)",{sub:["2D6"],f:["hypoT","brady","betablocker"]}],
  ["Atenolol","Beta-blocker (cardioselective)",{f:["hypoT","brady","betablocker"]}],
- ["Lisinopril","ACE inhibitor",{f:["kUp","hypoT","lithiumRaise"]}],
+ ["Lisinopril","ACE inhibitor",{f:["kUp","hypoT","lithiumRaise","acei"]}],
  ["Losartan","Angiotensin II receptor blocker",{sub:["2C9","3A4"],f:["kUp","hypoT","lithiumRaise"]}],
  ["Spironolactone","Potassium-sparing diuretic",{f:["kUp","hypoT"]}],
  ["Potassium chloride","Electrolyte supplement",{f:["kUp"]}],
@@ -652,7 +663,7 @@ const DRUGS_RAW = [
  ["Nitroglycerin","Organic nitrate vasodilator",{f:["hypoT","nitrate"]}],
  ["Isosorbide mononitrate","Organic nitrate vasodilator",{f:["hypoT","nitrate"]}],
  ["Sildenafil","PDE5 inhibitor",{sub:["3A4"],f:["hypoT","pde5"]}],
- ["Metformin","Biguanide antidiabetic",{f:[]}],
+ ["Metformin","Biguanide antidiabetic",{f:["oct2S"]}],
  ["Glimepiride","Sulfonylurea antidiabetic",{sub:["2C9"],f:["hypoG"]}],
  ["Insulin","Insulin",{f:["hypoG"]}],
  ["Methotrexate","Antimetabolite / DMARD",{f:["nti","nephro","antifolate"]}],
@@ -672,7 +683,50 @@ const DRUGS_RAW = [
  ["Cetirizine","H1 antihistamine (2nd gen)",{f:["cnsMild"]}],
  ["Alcohol (ethanol)","Social substance",{f:["cns","alcohol"]}],
  ["Grapefruit juice","Food (intestinal CYP3A4 inhibitor)",{inh:{"3A4":"moderate"},f:[]}],
- ["St John's Wort","Herbal (Hypericum perforatum)",{ind:["3A4","2C9","2C19"],f:["pgpInd","sero"]}]
+ ["St John's Wort","Herbal (Hypericum perforatum)",{ind:["3A4","2C9","2C19"],f:["pgpInd","sero"]}],
+ ["Nirmatrelvir/ritonavir","Antiviral (3CL protease inhibitor + PK booster)",{inh:{"3A4":"strong"},f:["pgpI"]}],
+ ["Edoxaban","Anticoagulant (DOAC)",{f:["anticoag","pgpS"]}],
+ ["Ticagrelor","Antiplatelet (P2Y12 inhibitor)",{sub:["3A4"],f:["antiplatelet","sensitive"]}],
+ ["Prasugrel","Antiplatelet (P2Y12 inhibitor)",{f:["antiplatelet"]}],
+ ["Empagliflozin","SGLT2 inhibitor (antidiabetic)",{f:["hypoT"]}],
+ ["Dapagliflozin","SGLT2 inhibitor (antidiabetic)",{f:["hypoT"]}],
+ ["Semaglutide","GLP-1 receptor agonist (antidiabetic)",{f:[]}],
+ ["Sitagliptin","DPP-4 inhibitor (antidiabetic)",{f:[]}],
+ ["Pioglitazone","Thiazolidinedione (antidiabetic)",{sub:["2C8"],f:[]}],
+ ["Repaglinide","Meglitinide (antidiabetic)",{sub:["2C8","3A4"],f:["hypoG","sensitive"]}],
+ ["Gemfibrozil","Fibrate (lipid-lowering)",{inh:{"2C8":"strong"},f:["myopathy"]}],
+ ["Celecoxib","NSAID (COX-2 selective)",{sub:["2C9"],f:["nsaid","nephro","lithiumRaise"]}],
+ ["Venlafaxine","SNRI antidepressant",{sub:["2D6"],f:["sero"]}],
+ ["Duloxetine","SNRI antidepressant",{sub:["1A2","2D6"],inh:{"2D6":"moderate"},f:["sero"]}],
+ ["Mirtazapine","Tetracyclic antidepressant",{sub:["3A4","1A2","2D6"],f:["sero","cns"]}],
+ ["Bupropion","Norepinephrine-dopamine reuptake inhibitor",{sub:["2B6"],inh:{"2D6":"strong"},f:["seizure"]}],
+ ["Fluvoxamine","SSRI antidepressant",{inh:{"1A2":"strong","2C19":"strong"},f:["sero","ssri"]}],
+ ["Risperidone","Atypical antipsychotic",{sub:["2D6","3A4"],f:["qt","cns"]}],
+ ["Olanzapine","Atypical antipsychotic",{sub:["1A2"],f:["cns","antichol"]}],
+ ["Aripiprazole","Atypical antipsychotic",{sub:["2D6","3A4"],f:["cns"]}],
+ ["Clozapine","Atypical antipsychotic",{sub:["1A2","3A4"],f:["qt","cns","antichol","nti","seizure","sensitive"]}],
+ ["Valproate","Antiepileptic / mood stabiliser",{inh:{"2C9":"moderate"},f:["nti","cns","ugtI"]}],
+ ["Lamotrigine","Antiepileptic",{f:["ugtS","cns"]}],
+ ["Levetiracetam","Antiepileptic",{f:["cns"]}],
+ ["Esomeprazole","Proton pump inhibitor",{sub:["2C19"],inh:{"2C19":"moderate"},f:[]}],
+ ["Voriconazole","Azole antifungal",{sub:["2C19","2C9","3A4"],inh:{"3A4":"strong","2C9":"moderate","2C19":"moderate"},f:["qt"]}],
+ ["Posaconazole","Azole antifungal",{inh:{"3A4":"strong"},f:["pgpI","qt"]}],
+ ["Dolutegravir","HIV integrase strand transfer inhibitor",{f:["oct2I"]}],
+ ["Efavirenz","HIV non-nucleoside reverse transcriptase inhibitor",{ind:["3A4","2B6"],f:["cns","qt"]}],
+ ["Imatinib","Tyrosine kinase inhibitor",{sub:["3A4"],inh:{"3A4":"moderate","2D6":"moderate"},f:[]}],
+ ["Ibrutinib","Bruton tyrosine kinase inhibitor",{sub:["3A4"],f:["sensitive","antiplatelet"]}],
+ ["Sirolimus","mTOR inhibitor immunosuppressant",{sub:["3A4"],f:["pgpS","nti"]}],
+ ["Mycophenolate mofetil","Antimetabolite immunosuppressant",{f:["chelatable"]}],
+ ["Febuxostat","Xanthine oxidase inhibitor (antigout)",{f:["xoi"]}],
+ ["Dronedarone","Class III antiarrhythmic",{sub:["3A4"],inh:{"3A4":"moderate","2D6":"moderate"},f:["pgpI","qt","brady"]}],
+ ["Sotalol","Class III antiarrhythmic / beta-blocker",{f:["qt","brady","betablocker","nti"]}],
+ ["Ivabradine","If channel inhibitor (heart failure)",{sub:["3A4"],f:["brady","sensitive"]}],
+ ["Sacubitril/valsartan","Angiotensin receptor-neprilysin inhibitor",{f:["kUp","hypoT","lithiumRaise","acei"]}],
+ ["Fexofenadine","H1 antihistamine (2nd gen)",{f:["pgpS","chelatable"]}],
+ ["Doxycycline","Tetracycline antibiotic",{f:["chelatable"]}],
+ ["Cimetidine","H2 receptor antagonist",{inh:{"1A2":"moderate","2D6":"moderate","3A4":"moderate"},f:["oct2I"]}],
+ ["Rifabutin","Rifamycin (antimycobacterial)",{ind:["3A4"],f:["pgpInd"]}],
+ ["Tamoxifen","Selective estrogen receptor modulator",{prodrug:"2D6",f:["qt"]}]
 ];
 
 /* Curated clinical interaction knowledge base [drugA, drugB, severity, effect, management] */
@@ -753,7 +807,55 @@ const KB_RAW = [
  ["Insulin","Metoprolol","moderate","Beta-blockers mask hypoglycaemia warning signs (tremor, tachycardia).","Educate the patient and monitor glucose; prefer cardioselective agents."],
  ["Prednisolone","Ibuprofen","moderate","Increased risk of GI ulceration and bleeding.","Consider PPI gastroprotection."],
  ["Fentanyl","Ritonavir","major","Strong CYP3A4 inhibition raises fentanyl levels: respiratory depression.","Avoid, or reduce the dose with close monitoring."],
- ["Citalopram","Omeprazole","moderate","CYP2C19 inhibition raises citalopram levels: QT prolongation.","Maximum citalopram dose 20 mg/day."]
+ ["Citalopram","Omeprazole","moderate","CYP2C19 inhibition raises citalopram levels: QT prolongation.","Maximum citalopram dose 20 mg/day."],
+ ["Nirmatrelvir/ritonavir","Simvastatin","contraindicated","Ritonavir is a strong CYP3A4 inhibitor; simvastatin exposure rises steeply, risking rhabdomyolysis.","Suspend simvastatin for the course and for 5 days afterwards."],
+ ["Nirmatrelvir/ritonavir","Atorvastatin","major","Strong CYP3A4 inhibition raises atorvastatin exposure.","Suspend atorvastatin during the 5-day course."],
+ ["Nirmatrelvir/ritonavir","Rivaroxaban","major","Combined CYP3A4 and P-gp inhibition raises rivaroxaban exposure and bleeding risk.","Avoid; consider an alternative antiviral or interrupt the anticoagulant under specialist advice."],
+ ["Nirmatrelvir/ritonavir","Apixaban","major","Combined CYP3A4 and P-gp inhibition raises apixaban exposure and bleeding risk.","Avoid, or reduce the apixaban dose per the product label under specialist advice."],
+ ["Nirmatrelvir/ritonavir","Tacrolimus","contraindicated","Strong CYP3A4 inhibition causes severe tacrolimus toxicity; nephrotoxicity and neurotoxicity.","Do not co-administer without transplant-team supervision and trough monitoring."],
+ ["Nirmatrelvir/ritonavir","Amiodarone","major","CYP3A4 inhibition raises amiodarone levels; additive arrhythmia risk.","Avoid; choose an alternative antiviral."],
+ ["Nirmatrelvir/ritonavir","Clopidogrel","major","Reduced formation of the active metabolite lowers the antiplatelet effect.","Consider prasugrel or an alternative antiviral."],
+ ["Gemfibrozil","Repaglinide","contraindicated","Strong CYP2C8 inhibition raises repaglinide exposure several-fold: prolonged, severe hypoglycaemia.","Contraindicated."],
+ ["Gemfibrozil","Simvastatin","major","Combined effect on statin disposition markedly increases myopathy and rhabdomyolysis risk.","Avoid; use fenofibrate if a fibrate is needed."],
+ ["Gemfibrozil","Pioglitazone","major","CYP2C8 inhibition roughly triples pioglitazone exposure.","Reduce the pioglitazone dose and monitor for oedema and weight gain."],
+ ["Fluvoxamine","Theophylline","major","Strong CYP1A2 inhibition raises theophylline levels: seizures and arrhythmias.","Avoid, or reduce the theophylline dose by about a third with level monitoring."],
+ ["Fluvoxamine","Clozapine","major","Strong CYP1A2 inhibition raises clozapine levels several-fold: seizures, myocarditis, sedation.","Avoid; if essential, reduce the clozapine dose substantially and monitor levels."],
+ ["Fluvoxamine","Tizanidine","contraindicated","CYP1A2 inhibition raises tizanidine exposure dramatically: profound hypotension and sedation.","Contraindicated."],
+ ["Ciprofloxacin","Clozapine","major","CYP1A2 inhibition raises clozapine levels: seizures and sedation.","Avoid; monitor clozapine levels if unavoidable."],
+ ["Valproate","Lamotrigine","major","Valproate inhibits lamotrigine glucuronidation, roughly doubling its half-life and raising the risk of serious rash, including Stevens-Johnson syndrome.","Halve the lamotrigine starting dose and titrate slowly per the product label."],
+ ["Carbamazepine","Lamotrigine","moderate","Enzyme induction lowers lamotrigine levels and may reduce seizure control.","Higher lamotrigine doses are usually needed; titrate to response."],
+ ["Bupropion","Metoprolol","moderate","Strong CYP2D6 inhibition raises metoprolol exposure: bradycardia and hypotension.","Monitor heart rate and blood pressure; consider a dose reduction."],
+ ["Bupropion","Tamoxifen","major","CYP2D6 inhibition blocks formation of endoxifen, the active metabolite, reducing efficacy.","Avoid in patients taking tamoxifen for breast cancer."],
+ ["Paroxetine","Tamoxifen","major","Strong CYP2D6 inhibition blocks endoxifen formation and has been linked to worse breast-cancer outcomes.","Avoid; use an SSRI with little CYP2D6 effect."],
+ ["Fluoxetine","Tamoxifen","major","Strong CYP2D6 inhibition reduces conversion to endoxifen and therefore tamoxifen efficacy.","Avoid; choose a non-CYP2D6-inhibiting antidepressant."],
+ ["Voriconazole","Simvastatin","contraindicated","Strong CYP3A4 inhibition raises simvastatin exposure: rhabdomyolysis.","Contraindicated; suspend the statin."],
+ ["Voriconazole","Phenytoin","major","Mutual interaction: phenytoin induces voriconazole metabolism while voriconazole raises phenytoin levels.","Avoid; if essential, double the voriconazole dose and monitor phenytoin levels."],
+ ["Voriconazole","Warfarin","major","CYP2C9 inhibition raises INR markedly.","Monitor INR closely and reduce the warfarin dose."],
+ ["Posaconazole","Simvastatin","contraindicated","Strong CYP3A4 inhibition raises statin exposure: rhabdomyolysis.","Contraindicated."],
+ ["Dronedarone","Digoxin","major","P-gp inhibition roughly doubles digoxin exposure; additive bradycardia.","Halve the digoxin dose and monitor levels and ECG."],
+ ["Dronedarone","Simvastatin","major","CYP3A4 inhibition raises simvastatin exposure; myopathy risk.","Do not exceed simvastatin 10 mg/day."],
+ ["Dolutegravir","Metformin","moderate","Dolutegravir inhibits the renal OCT2 and MATE transporters, raising metformin exposure.","Cap metformin at 1 g/day and monitor for gastrointestinal effects and lactic acidosis."],
+ ["Cimetidine","Metformin","moderate","Competition for renal OCT2 and MATE transport raises metformin levels.","Consider another H2 blocker, or monitor renal function and glucose."],
+ ["Febuxostat","Azathioprine","contraindicated","Xanthine oxidase inhibition causes 6-mercaptopurine accumulation: profound myelosuppression.","Contraindicated."],
+ ["Ticagrelor","Clarithromycin","major","Strong CYP3A4 inhibition raises ticagrelor exposure and bleeding risk.","Avoid; use azithromycin."],
+ ["Ticagrelor","Rifampicin","major","Enzyme induction lowers ticagrelor exposure: loss of antiplatelet protection.","Avoid the combination."],
+ ["Ticagrelor","Aspirin","moderate","Intended dual antiplatelet therapy, but aspirin above about 100 mg/day reduces ticagrelor efficacy and adds bleeding risk.","Keep maintenance aspirin at 75-100 mg/day."],
+ ["Ibrutinib","Clarithromycin","major","Ibrutinib is a sensitive CYP3A4 substrate; exposure rises several-fold with bleeding and cytopenia risk.","Interrupt ibrutinib, or reduce the dose per the label."],
+ ["Ibrutinib","Warfarin","major","Additive bleeding risk; ibrutinib impairs platelet function.","Avoid; consider an alternative anticoagulant with haematology advice."],
+ ["Sirolimus","Itraconazole","major","Strong CYP3A4 and P-gp inhibition causes sirolimus toxicity.","Avoid, or reduce the dose with trough-level monitoring."],
+ ["Sirolimus","Rifampicin","major","Potent induction lowers sirolimus levels: graft rejection risk.","Avoid the combination."],
+ ["Mycophenolate mofetil","Calcium carbonate","moderate","Divalent cations bind mycophenolate in the gut and reduce its absorption.","Separate administration by at least 2 hours."],
+ ["Mycophenolate mofetil","Pantoprazole","moderate","Raised gastric pH reduces dissolution and lowers mycophenolate exposure.","Monitor for reduced immunosuppressive effect; consider an H2 blocker."],
+ ["Celecoxib","Warfarin","major","Additive bleeding risk; CYP2C9 competition can also raise INR.","Avoid; monitor INR closely if unavoidable."],
+ ["Celecoxib","Fluconazole","major","CYP2C9 inhibition roughly doubles celecoxib exposure.","Halve the celecoxib dose."],
+ ["Esomeprazole","Clopidogrel","major","CYP2C19 inhibition reduces conversion of clopidogrel to its active metabolite.","Use pantoprazole instead if a PPI is required."],
+ ["Ivabradine","Clarithromycin","contraindicated","Strong CYP3A4 inhibition raises ivabradine exposure: severe bradycardia.","Contraindicated."],
+ ["Efavirenz","Rivaroxaban","major","CYP3A4 induction lowers rivaroxaban exposure: thrombosis risk.","Avoid the combination."],
+ ["Sacubitril/valsartan","Lisinopril","contraindicated","Combined neprilysin and ACE inhibition sharply increases the risk of angioedema.","Contraindicated; allow a 36-hour washout when switching."],
+ ["Sacubitril/valsartan","Spironolactone","major","Additive potassium retention: hyperkalaemia.","Monitor potassium and renal function closely."],
+ ["Doxycycline","Calcium carbonate","moderate","Chelation with divalent cations reduces doxycycline absorption.","Separate doses by at least 2 hours."],
+ ["Imatinib","Simvastatin","moderate","CYP3A4 inhibition raises simvastatin exposure.","Monitor for muscle symptoms; consider a lower statin dose."],
+ ["Clozapine","Olanzapine","moderate","Therapeutic duplication of atypical antipsychotics with additive sedation, metabolic and anticholinergic burden.","Avoid routine co-prescription; review the indication."]
 ];
 /* Curated pairs with NO clinically significant interaction (true negatives for ML) */
 const SAFE_RAW = [
@@ -761,7 +863,11 @@ const SAFE_RAW = [
  ["Paracetamol","Metformin"],["Levothyroxine","Metformin"],["Paracetamol","Omeprazole"],["Atenolol","Metformin"],
  ["Losartan","Rosuvastatin"],["Pantoprazole","Amlodipine"],["Cetirizine","Paracetamol"],["Azithromycin","Paracetamol"],
  ["Rosuvastatin","Metformin"],["Levothyroxine","Atorvastatin"],["Amlodipine","Metformin"],["Pantoprazole","Metformin"],
- ["Cetirizine","Amlodipine"],["Paracetamol","Losartan"],["Atenolol","Rosuvastatin"],["Paracetamol","Levothyroxine"]
+ ["Cetirizine","Amlodipine"],["Paracetamol","Losartan"],["Atenolol","Rosuvastatin"],["Paracetamol","Levothyroxine"],
+ ["Semaglutide","Amlodipine"],["Sitagliptin","Atorvastatin"],["Levetiracetam","Amlodipine"],
+ ["Empagliflozin","Atorvastatin"],["Dapagliflozin","Levothyroxine"],["Fexofenadine","Metformin"],
+ ["Prasugrel","Pantoprazole"],["Sitagliptin","Levetiracetam"],["Empagliflozin","Paracetamol"],
+ ["Semaglutide","Rosuvastatin"],["Doxycycline","Paracetamol"],["Levetiracetam","Metformin"]
 ];
 const PRESETS = {
  "Elderly cardiac":["Warfarin","Amiodarone","Digoxin","Furosemide","Simvastatin","Aspirin"],
@@ -770,6 +876,9 @@ const PRESETS = {
  "Diabetes + hypertension":["Metformin","Glimepiride","Lisinopril","Spironolactone","Atorvastatin","Metoprolol"],
  "Psychiatry":["Lithium","Quetiapine","Citalopram","Hydrochlorothiazide","Ondansetron"],
  "Cardiology + ED":["Sildenafil","Isosorbide mononitrate","Clopidogrel","Omeprazole","Amlodipine"],
+ "COVID antiviral + cardiac":["Nirmatrelvir/ritonavir","Simvastatin","Rivaroxaban","Amlodipine","Metoprolol"],
+ "Modern diabetes + HIV":["Metformin","Dolutegravir","Empagliflozin","Semaglutide","Atorvastatin"],
+ "Epilepsy + psychiatry":["Valproate","Lamotrigine","Clozapine","Fluvoxamine","Olanzapine"],
  "Low-risk check":["Paracetamol","Metformin","Amlodipine","Rosuvastatin"]
 };
 const RULES = [
@@ -787,7 +896,9 @@ const RULES = [
  ["R12","Electrolyte-mediated","K⁺-wasting diuretic/steroid × digoxin or QT-prolonging drug."],
  ["R13","Renal lithium clearance","NSAID / ACEi / ARB / thiazide × lithium."],
  ["R14","Absorption (chelation)","Polyvalent cation × fluoroquinolone or levothyroxine."],
- ["R15","Specific mechanisms","Nitrate + PDE5i, disulfiram-like reaction, XO inhibitor + thiopurine, dual antifolates, steroid + NSAID, beta-blocker masking hypoglycaemia."]
+ ["R15","Specific mechanisms","Nitrate + PDE5i, disulfiram-like reaction, XO inhibitor + thiopurine, dual antifolates, steroid + NSAID, beta-blocker masking hypoglycaemia, additive seizure-threshold lowering, ARNI + ACE inhibitor."],
+ ["R16","Renal cation transporters","OCT2 / MATE inhibitor \u00d7 substrate (dolutegravir or cimetidine with metformin): reduced renal clearance raises exposure."],
+ ["R17","Glucuronidation (UGT)","UGT inhibitor \u00d7 substrate (valproate with lamotrigine): roughly doubled half-life and a higher risk of serious rash."]
 ];
 
 /* ============================================================
@@ -844,6 +955,9 @@ function ruleEngine(a,b){
     if(x.f.has("nitrate")&&y.f.has("pde5")) add(4,"R15","Nitrate + PDE5 inhibitor",`Additive NO/cGMP-mediated vasodilation causes severe, potentially fatal hypotension.`);
     if(x.f.has("steroid")&&y.f.has("nsaid")) add(2,"R15","GI ulceration / bleeding",`Corticosteroid plus NSAID increases peptic ulcer and GI bleeding risk.`);
     if(x.f.has("betablocker")&&y.f.has("hypoG")) add(2,"R15","Masked hypoglycaemia",`${x.name} can mask adrenergic warning signs of hypoglycaemia caused by ${y.name} and delay recovery.`);
+    if(x.f.has("oct2I")&&y.f.has("oct2S")) add(2,"R16","Renal cation transporter inhibition",`${x.name} inhibits the renal OCT2 and MATE transporters that clear ${y.name}, so its plasma levels rise. Monitor renal function and watch for lactic acidosis.`);
+    if(x.f.has("ugtI")&&y.f.has("ugtS")) add(3,"R17","Glucuronidation (UGT) inhibition",`${x.name} inhibits the UGT enzymes that clear ${y.name}, roughly doubling its half-life. With lamotrigine this raises the risk of serious rash, so the starting dose must be halved.`);
+    if(x.f.has("seizure")&&y.f.has("seizure")) add(3,"R15","Additive seizure risk",`Both ${x.name} and ${y.name} lower the seizure threshold; the combined risk is greater than either alone.`);
   }
   const both=f=>a.f.has(f)&&b.f.has(f), either=f=>a.f.has(f)||b.f.has(f);
   if(both("qt")) add(3,"R5","Additive QT prolongation",`Both ${a.name} and ${b.name} prolong the QT interval, raising the risk of torsades de pointes. Avoid, or monitor ECG and electrolytes.`);
@@ -852,6 +966,7 @@ function ruleEngine(a,b){
   if(both("cns")){const ob=(a.f.has("opioid")&&b.f.has("benzo"))||(b.f.has("opioid")&&a.f.has("benzo"));const al=either("alcohol")&&(either("opioid")||either("benzo"));
     add(ob||al?3:2,"R8","Additive CNS / respiratory depression",ob?"Opioid + benzodiazepine causes profound sedation and respiratory depression (FDA boxed warning).":al?"Alcohol potentiates opioid/benzodiazepine sedation and respiratory depression.":"Both drugs depress the CNS: drowsiness, psychomotor impairment, falls.");}
   else if((a.f.has("cnsMild")&&b.f.has("cns"))||(b.f.has("cnsMild")&&a.f.has("cns"))) add(1,"R8","Mild additive sedation","Minor additive drowsiness; caution with driving.");
+  if(a.f.has("acei")&&b.f.has("acei")&&a.cls!==b.cls) add(4,"R15","Dual RAAS blockade with neprilysin inhibition","Combining an ARNI with an ACE inhibitor sharply increases the risk of angioedema. A 36-hour washout is required when switching between them.");
   if(both("kUp")) add(3,"R9","Hyperkalaemia","Both drugs raise serum potassium: risk of arrhythmia. Monitor K⁺ and renal function.");
   if(both("nephro")) add(2,"R10","Additive nephrotoxicity","Both drugs can impair renal function. Monitor creatinine and hydration.");
   if(both("hypoT")&&!(either("nitrate")&&either("pde5"))) add(1,"R10","Additive hypotension","Additive blood-pressure lowering: dizziness, orthostatic hypotension (often intended; monitor).");
@@ -1001,6 +1116,7 @@ const BURDENS=[
  {k:"antichol",label:"Anticholinergic burden",test:d=>d.f.has("antichol"),note:"Anticholinergic burden scales are built on counts like this one, and correlate with confusion and falls in older adults."},
  {k:"kUp",label:"Potassium retention",test:d=>d.f.has("kUp"),note:"Several potassium-raising agents together can push serum potassium up faster than any pair would suggest."},
  {k:"nephro",label:"Nephrotoxic load",test:d=>d.f.has("nephro"),note:"The classic triple whammy (ACEi or ARB, diuretic and NSAID) is a count-based risk, not a pairwise one."},
+ {k:"seizure",label:"Seizure threshold",test:d=>d.f.has("seizure"),note:"Several drugs that lower the seizure threshold together carry more risk than any single pair suggests, especially in epilepsy or alcohol withdrawal."},
  {k:"nti",label:"Narrow therapeutic index",test:d=>d.f.has("nti"),note:"Several narrow-index drugs in one regimen leave little room for any perturbation of clearance."}
 ];
 function burdens(ds){
@@ -1277,7 +1393,8 @@ $("#sampleDB").onclick=()=>{$("#paste").value=`drug1,drug2,severity,description,
 Clarithromycin,Quetiapine,major,"Strong CYP3A4 inhibition increases quetiapine exposure; QT prolongation and sedation.","Avoid or reduce quetiapine dose."
 Fluconazole,Citalopram,major,"Additive QT prolongation and CYP2C19 inhibition increases citalopram exposure.","Avoid; consider alternative antifungal."
 Amiodarone,Atorvastatin,moderate,"Possible increase in atorvastatin exposure; myopathy.","Monitor for muscle symptoms."
-Allopurinol,Amoxicillin,minor,"Increased incidence of skin rash.","Monitor for rash."`;toast("Example loaded — click Import")};
+Allopurinol,Amoxicillin,minor,"Increased incidence of skin rash.","Monitor for rash."
+Posaconazole,Tacrolimus,major,"Strong CYP3A4 inhibition raises tacrolimus exposure.","Reduce tacrolimus dose by about two-thirds and monitor troughs."`;toast("Example loaded — click Import")};
 $("#sampleTS").onclick=()=>{$("#paste").value=`drug_1_concept_name,drug_2_concept_name,condition_concept_name,PRR
 Omeprazole,Metformin,Lactic acidosis,2.4
 Omeprazole,Metformin,Hypomagnesaemia,1.8
